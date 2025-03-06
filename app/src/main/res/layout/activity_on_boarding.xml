@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/layoutRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/black"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="43dp"
+        android:importantForAccessibility="no"
+        android:src="@drawable/sub_logo" />
+
+    <TextView
+        android:id="@+id/tvTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Connect friends"
+        android:textColor="@android:color/white"
+        android:textSize="68sp" />
+
+    <TextView
+        android:id="@+id/tvSubTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        android:text="easily &amp; quickly"
+        android:textColor="@android:color/white"
+        android:textSize="68sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/tvDescription"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="38dp"
+        android:paddingRight="67dp"
+        android:text="Our chat app is the perfect way to stay connected with friends and family"
+        android:textColor="#B3FFFFFF"
+        android:textSize="16sp" />
+
+    <!--Another ways to Login-->
+    <LinearLayout
+        android:id="@+id/llIcons"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="30dp"
+        android:gravity="center"
+        android:orientation="horizontal">
+        <!-- Facebook -->
+        <ImageButton
+            android:id="@+id/btnSignUpFacebook"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="24dp"
+            android:background="@drawable/border"
+            android:contentDescription="facebook"
+            android:padding="12dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/facebook_icon" />
+        <!-- Google -->
+        <ImageButton
+            android:id="@+id/btnSignUpGoogle"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/border"
+            android:contentDescription="google"
+            android:padding="12dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/google_icon" />
+    </LinearLayout>
+
+    <!-- OR -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginBottom="30dp">
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1"
+            android:background="#4DFFFFFF"
+            android:layout_marginEnd="8dp" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="OR"
+            android:textColor="#B3FFFFFF"
+            android:textSize="14sp" />
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1"
+            android:background="#4DFFFFFF"
+            android:layout_marginStart="8dp" />
+    </LinearLayout>
+
+    <!-- Button Sign Up -->
+    <Button
+        android:id="@+id/btnSignUp"
+        android:layout_width="match_parent"
+        android:layout_height="65dp"
+        android:layout_marginBottom="46dp"
+        android:backgroundTint="#FFFFFF"
+        android:text="Sign up with email"
+        android:textColor="#000000"
+        android:textSize="18sp" />
+
+    <!-- Login -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center">
+        <TextView
+            android:id="@+id/tvLogin"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="Existing account?"
+            android:textColor="@android:color/white"
+            android:textSize="16sp" />
+
+        <Button
+            android:id="@+id/btnSignIn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:backgroundTint="@color/black"
+            android:text="Log in"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+</LinearLayout>

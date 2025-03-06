@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="primary">#24786D</color>
+    <color name="sub_primary">#8d99ae</color>
+
+    <!-- Các màu theme -->
+    <color name="theme_shade">#9C27B0</color>
+    <color name="theme_rose">#E91E63</color>
+    <color name="theme_lavender">#9C4B45</color>
+    <color name="theme_tulip">#E040FB</color>
+    <color name="theme_classic">#03A9F4</color>
+    <color name="theme_apple">#F44336</color>
+    <color name="theme_honey">#FFA000</color>
+    <color name="theme_kiwi">#8BC34A</color>
+    <color name="theme_ocean">#3F51B5</color>
+
+
+    <!-- Màu nền dialog -->
+    <color name="dialog_background">#212529</color>
+    <color name="text_color_white">#FFFFFF</color>
+    <color name="button_done_color">#2196F3</color>
+</resources>

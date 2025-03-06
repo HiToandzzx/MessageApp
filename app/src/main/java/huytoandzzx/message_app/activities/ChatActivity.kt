@@ -1,0 +1,351 @@
+package huytoandzzx.message_app.activities
+
+import android.annotation.SuppressLint
+import android.app.Dialog
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.os.Bundle
+import android.util.Base64
+import android.view.View
+import android.view.ViewGroup
+import android.view.Window
+import android.widget.Button
+import android.widget.TextView
+import androidx.core.content.ContextCompat
+import com.google.android.gms.tasks.OnCompleteListener
+import com.google.firebase.firestore.DocumentChange
+import com.google.firebase.firestore.EventListener
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.QuerySnapshot
+import huytoandzzx.message_app.R
+import huytoandzzx.message_app.adapters.ChatAdapter
+import huytoandzzx.message_app.databinding.ActivityChatBinding
+import huytoandzzx.message_app.models.ChatMessage
+import huytoandzzx.message_app.models.User
+import huytoandzzx.message_app.utilities.Constants
+import huytoandzzx.message_app.utilities.PreferenceManager
+import java.util.Date
+
+@Suppress("DEPRECATION")
+class ChatActivity : BaseActivity() {
+    private lateinit var binding: ActivityChatBinding
+    private lateinit var receiverUser: User
+    //private lateinit var chatMessages: List<ChatMessage>
+    private var chatMessages: MutableList<ChatMessage> = mutableListOf()
+    private lateinit var chatAdapter: ChatAdapter
+    private lateinit var database: FirebaseFirestore
+    private lateinit var preferenceManager: PreferenceManager
+    private var conversionId: String? = null
+    private var isReceiverAvailable :Boolean = false
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        binding = ActivityChatBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        preferenceManager = PreferenceManager(applicationContext)
+        setListeners()
+        loadReceiverDetails()
+        init()
+        listenMessages()
+    }
+
+    private fun init() {
+        chatMessages = mutableListOf()
+        chatAdapter = ChatAdapter(
+            chatMessages,
+            receiverUser.image?.let { getBitmapFromEncodedString(it) },
+            preferenceManager.getString(Constants.KEY_USER_ID) ?: ""
+        )
+
+        binding.chatRecyclerView.adapter = chatAdapter
+        database = FirebaseFirestore.getInstance()
+    }
+
+    private fun setListeners(){
+        binding.imageBack.setOnClickListener{
+            onBackPressedDispatcher.onBackPressed()
+        }
+
+        binding.layoutSend.setOnClickListener{
+            sendMessage()
+        }
+
+        binding.imgTheme.setOnClickListener {
+            showThemeSelectionDialog()
+        }
+    }
+
+    // HIỂN THỊ DANH SÁCH THEME
+    @SuppressLint("SetTextI18n")
+    private fun showThemeSelectionDialog() {
+        // Create a custom dialog
+        val dialog = Dialog(this)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        dialog.setContentView(R.layout.dialog_theme)
+
+        // Set dialog width to match parent
+        dialog.window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+
+        // Find views in the dialog
+        val titleTextView = dialog.findViewById<TextView>(R.id.textViewTitle)
+        val doneButton = dialog.findViewById<Button>(R.id.buttonDone)
+
+        // Set title text
+        titleTextView.text = "Theme"
+        doneButton.text = "Done"
+
+        // Set up the color options with resource IDs
+        val colorOptions = listOf(
+            Triple("Bóng rầm", R.color.theme_shade, R.id.colorBongRam),
+            Triple("Hoa hồng", R.color.theme_rose, R.id.colorHoaHong),
+            Triple("Tím oải hương", R.color.theme_lavender, R.id.colorTimOaiHuong),
+            Triple("Hoa tulip", R.color.theme_tulip, R.id.colorHoaTulip),
+            Triple("Cỏ điện", R.color.theme_classic, R.id.colorCoDien),
+            Triple("Táo", R.color.theme_apple, R.id.colorTao),
+            Triple("Mật ong", R.color.theme_honey, R.id.colorMatOng),
+            Triple("Kiwi", R.color.theme_kiwi, R.id.colorKiwi),
+            Triple("Đại dương", R.color.theme_ocean, R.id.colorDaiDuong),
+        )
+
+        // Set up each color view
+        for ((_, colorResId, viewId) in colorOptions) {
+            val colorView = dialog.findViewById<View>(viewId)
+            // Lấy màu từ resources
+            val colorValue = ContextCompat.getColor(this, colorResId)
+
+            // Add click listener to each color
+            colorView.setOnClickListener {
+                applyThemeColor(colorValue)
+                saveThemeColorToFirebase(colorValue)
+                dialog.dismiss()
+            }
+        }
+
+        doneButton.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.show()
+    }
+
+    // APPLY THEME
+    private fun applyThemeColor(color: Int) {
+        binding.root.setBackgroundColor(color)
+        binding.headerBackground.setBackgroundColor(color)
+        chatAdapter.updateThemeColor(color)
+    }
+
+    // LƯU THEME
+    private fun saveThemeColorToFirebase(color: Int) {
+        // Kiểm tra conversionId có tồn tại hay không
+        conversionId?.let { convId ->
+            // Tạo map cập nhật, thêm trường KEY_THEME_COLOR (đã khai báo trong Constants) và cập nhật timestamp
+            val updateMap = hashMapOf<String, Any>(
+                Constants.KEY_THEME_COLOR to color,
+                Constants.KEY_TIMESTAMP to Date()
+            )
+            database.collection(Constants.KEY_COLLECTION_CONVERSATIONS)
+                .document(convId)
+                .update(updateMap)
+                .addOnSuccessListener {
+                    // Bạn có thể hiển thị thông báo thành công nếu cần
+                }
+                .addOnFailureListener { _ ->
+                    // Xử lý lỗi nếu việc cập nhật thất bại
+                }
+        }
+    }
+
+    private fun loadThemeColor() {
+        conversionId?.let { convId ->
+            database.collection(Constants.KEY_COLLECTION_CONVERSATIONS)
+                .document(convId)
+                .get()
+                .addOnSuccessListener { document ->
+                    if (document.exists()) {
+                        val themeColor = document.getLong(Constants.KEY_THEME_COLOR)
+                        themeColor?.let {
+                            applyThemeColor(it.toInt())
+                        }
+                    }
+                }
+        }
+    }
+
+    private fun sendMessage() {
+        val message = hashMapOf<String, Any>(
+            Constants.KEY_SENDER_ID to (preferenceManager.getString(Constants.KEY_USER_ID) ?: ""),
+            Constants.KEY_RECEIVER_ID to (receiverUser.id ?: ""),
+            Constants.KEY_MESSAGE to binding.inputMessage.text.toString(),
+            Constants.KEY_TIMESTAMP to Date(),
+        )
+
+        database.collection(Constants.KEY_COLLECTION_CHAT).add(message)
+        if (conversionId != null) {
+            updateConversion(binding.inputMessage.text.toString())
+        } else {
+            val conversion = hashMapOf<String, Any>(
+                Constants.KEY_SENDER_ID to (preferenceManager.getString(Constants.KEY_USER_ID) ?: ""),
+                Constants.KEY_SENDER_NAME to (preferenceManager.getString(Constants.KEY_NAME) ?: ""),
+                Constants.KEY_SENDER_IMAGE to (preferenceManager.getString(Constants.KEY_IMAGE) ?: ""),
+                Constants.KEY_RECEIVER_ID to (receiverUser.id ?: ""),
+                Constants.KEY_RECEIVER_NAME to (receiverUser.name ?: ""),
+                Constants.KEY_RECEIVER_IMAGE to (receiverUser.image ?: ""),
+                Constants.KEY_LAST_MESSAGE to binding.inputMessage.text.toString(),
+                Constants.KEY_TIMESTAMP to Date()
+            )
+            addConversion(conversion)
+        }
+        binding.inputMessage.setText("")
+    }
+
+    // CHECK USER CÓ ONLINE
+    private fun listenAvailabilityOfReceiver() {
+        database.collection(Constants.KEY_COLLECTION_USERS)
+            .document(receiverUser.id!!)
+            .addSnapshotListener { value, error ->
+                if (error != null) {
+                    return@addSnapshotListener
+                }
+
+                value?.let {
+                    val availability = it.getLong(Constants.KEY_AVAILABILITY)?.toInt()
+                    isReceiverAvailable = (availability == 1)
+                }
+                receiverUser.token = value?.getString(Constants.KEY_FCM_TOKEN)
+
+                if (isReceiverAvailable) {
+                    binding.textAvailability.visibility = View.VISIBLE
+                } else {
+                    binding.textAvailability.visibility = View.GONE
+                }
+                receiverUser.token = value?.getString(Constants.KEY_FCM_TOKEN)
+            }
+    }
+
+    private fun listenMessages() {
+        database.collection(Constants.KEY_COLLECTION_CHAT)
+            .whereEqualTo(Constants.KEY_SENDER_ID, preferenceManager.getString(Constants.KEY_USER_ID))
+            .whereEqualTo(Constants.KEY_RECEIVER_ID, receiverUser.id)
+            .addSnapshotListener(eventListener)
+
+        database.collection(Constants.KEY_COLLECTION_CHAT)
+            .whereEqualTo(Constants.KEY_SENDER_ID, receiverUser.id)
+            .whereEqualTo(Constants.KEY_RECEIVER_ID, preferenceManager.getString(Constants.KEY_USER_ID))
+            .addSnapshotListener(eventListener)
+    }
+
+    @SuppressLint("NotifyDataSetChanged")
+    private val eventListener = EventListener<QuerySnapshot> { value, error ->
+        if (error != null) {
+            return@EventListener
+        }
+
+        if (value != null) {
+            val count = chatMessages.size
+            for (documentChange in value.documentChanges) {
+                if (documentChange.type == DocumentChange.Type.ADDED) {
+                    val chatMessage = ChatMessage().apply {
+                        senderId = documentChange.document.getString(Constants.KEY_SENDER_ID) ?: ""
+                        receiverId = documentChange.document.getString(Constants.KEY_RECEIVER_ID) ?: ""
+                        message = documentChange.document.getString(Constants.KEY_MESSAGE) ?: ""
+                        dateTime = getReadableDateTime(documentChange.document.getDate(Constants.KEY_TIMESTAMP) ?: Date())
+                        dateObject = documentChange.document.getDate(Constants.KEY_TIMESTAMP) ?: Date()
+                    }
+                    chatMessages.add(chatMessage)
+                }
+            }
+
+            chatMessages.sortBy { it.dateObject }
+
+            if (count == 0) {
+                chatAdapter.notifyDataSetChanged()
+            } else {
+                chatAdapter.notifyItemRangeInserted(count, chatMessages.size - count)
+                binding.chatRecyclerView.smoothScrollToPosition(chatMessages.size - 1)
+            }
+            binding.chatRecyclerView.visibility = View.VISIBLE
+            //binding.progressBar.visibility = View.GONE
+        }
+        binding.progressBar.visibility = View.GONE
+
+        if (conversionId == null){
+            checkForConversion()
+        }
+    }
+
+    private fun getBitmapFromEncodedString(encodedImage: String): Bitmap {
+        val bytes = Base64.decode(encodedImage, Base64.DEFAULT)
+        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+    }
+
+    private fun loadReceiverDetails() {
+        receiverUser = intent.getSerializableExtra(Constants.KEY_USER) as User
+        binding.tvName.text = receiverUser.name
+        receiverUser.image?.let {
+            val bitmap = getBitmapFromEncodedString(it)
+            binding.imageAvatar.setImageBitmap(bitmap)
+        }
+    }
+
+    private fun addConversion(conversion: HashMap<String, Any>) {
+        database.collection(Constants.KEY_COLLECTION_CONVERSATIONS)
+            .add(conversion)
+            .addOnSuccessListener { documentReference ->
+                conversionId = documentReference.id
+            }
+    }
+
+    private fun updateConversion(message: String) {
+        val documentReference = database.collection(Constants.KEY_COLLECTION_CONVERSATIONS).document(conversionId!!)
+        documentReference.update(
+            Constants.KEY_LAST_MESSAGE, message,
+            Constants.KEY_TIMESTAMP, Date()
+        )
+    }
+
+    private fun checkForConversion() {
+        if (chatMessages.isNotEmpty()) {
+            checkForConversionRemotely(
+                preferenceManager.getString(Constants.KEY_USER_ID) ?: "",
+                receiverUser.id ?: ""
+            )
+        }
+        checkForConversionRemotely(
+            receiverUser.id ?: "",
+            preferenceManager.getString(Constants.KEY_USER_ID) ?: ""
+        )
+    }
+
+    private fun checkForConversionRemotely(senderId: String, receiverId: String) {
+        database.collection(Constants.KEY_COLLECTION_CONVERSATIONS)
+            .whereEqualTo(Constants.KEY_SENDER_ID, senderId)
+            .whereEqualTo(Constants.KEY_RECEIVER_ID, receiverId)
+            .get()
+            .addOnCompleteListener(conversionOnCompleteListener)
+    }
+
+    private val conversionOnCompleteListener = OnCompleteListener<QuerySnapshot> { task ->
+        if (task.isSuccessful && task.result != null && (task.result?.documents?.size ?: 0) > 0) {
+            val documentSnapshot = task.result?.documents?.get(0)
+            conversionId = documentSnapshot?.id
+            // Kiểm tra và áp dụng theme nếu đã lưu trước đó
+            val themeColorLong = documentSnapshot?.getLong(Constants.KEY_THEME_COLOR)
+            themeColorLong?.let {
+                applyThemeColor(it.toInt())
+            }
+        }
+    }
+
+    private fun getReadableDateTime(date: Date): String {
+        val dateFormat = java.text.SimpleDateFormat("hh:mm a", java.util.Locale.getDefault())
+        return dateFormat.format(date)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        listenAvailabilityOfReceiver()
+        loadThemeColor()
+    }
+}
