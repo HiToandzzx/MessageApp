@@ -13,7 +13,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.navigation.NavigationView
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query.Direction.*
+import com.google.firebase.firestore.Query
 import huytoandzzx.message_app.R
 import huytoandzzx.message_app.adapters.ChatAiAdapter
 import huytoandzzx.message_app.models.BlenderBotRequest
@@ -27,7 +27,8 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.text.SimpleDateFormat
 import java.util.Locale
-import com.google.firebase.firestore.Query
+import huytoandzzx.message_app.utilities.Constants
+import huytoandzzx.message_app.utilities.PreferenceManager
 
 class BlenderBotAiActivity : AppCompatActivity() {
 
@@ -41,6 +42,10 @@ class BlenderBotAiActivity : AppCompatActivity() {
     private val messages = mutableListOf<ChatAiMessage>()
     private val db = FirebaseFirestore.getInstance()
 
+    // Sử dụng PreferenceManager để lấy user id
+    private lateinit var preferenceManager: PreferenceManager
+    private var userId: String? = null
+
     private var currentChatId: String? = null // Lưu ID của cuộc trò chuyện hiện tại
 
     private lateinit var apiService: BlenderBotApiService
@@ -49,6 +54,10 @@ class BlenderBotAiActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_blender_bot_ai)
+
+        // Khởi tạo PreferenceManager và lấy userId từ Shared Preferences
+        preferenceManager = PreferenceManager(applicationContext)
+        userId = preferenceManager.getString(Constants.KEY_USER_ID)
 
         rvChat = findViewById(R.id.rvChat)
         etMessage = findViewById(R.id.etMessage)
@@ -91,68 +100,47 @@ class BlenderBotAiActivity : AppCompatActivity() {
         }
     }
 
-    // LOAD LỊCH SỬ CHAT
+    // LOAD LỊCH SỬ CHAT, chỉ tải chat của người dùng hiện tại
     private fun loadChatHistory() {
         val navigationView = findViewById<NavigationView>(R.id.navigationView)
         val menu = navigationView.menu
         menu.clear() // Xóa danh sách cũ
 
-        db.collection("chat_with_ai")
-            .orderBy("timestamp", Query.Direction.DESCENDING)
-            .get()
-            .addOnSuccessListener { result ->
-                for (document in result) {
-                    val chatId = document.id
-                    val messagesList = document.get("messages") as? List<Map<String, Any>>
+        // Đảm bảo userId không null
+        userId?.let { id ->
+            db.collection("chat_with_ai")
+                .whereEqualTo("userId", id)  // Lọc theo userId
+                .orderBy("timestamp", Query.Direction.DESCENDING)
+                .get()
+                .addOnSuccessListener { result ->
+                    for (document in result) {
+                        val chatId = document.id
+                        val messagesList = document.get("messages") as? List<Map<String, Any>>
 
-                    // Lấy tin nhắn đầu tiên của user
-                    val firstUserMessage = messagesList?.firstOrNull { it["isUser"] as Boolean }
-                    val title = firstUserMessage?.get("text") as? String ?: "Không có tin nhắn"
+                        // Lấy tin nhắn đầu tiên của user
+                        val firstUserMessage = messagesList?.firstOrNull { it["isUser"] as Boolean }
+                        val title = firstUserMessage?.get("text") as? String ?: "Không có tin nhắn"
 
-                    // Lấy timestamp và chuyển thành chuỗi ngày giờ
-                    val timestamp = document.getTimestamp("timestamp")?.toDate()
-                    val formattedDate = if (timestamp != null) {
-                        SimpleDateFormat("dd/MM HH:mm", Locale.getDefault()).format(timestamp)
-                    } else {
-                        "Không rõ thời gian"
-                    }
+                        // Lấy timestamp và chuyển thành chuỗi ngày giờ
+                        val timestamp = document.getTimestamp("timestamp")?.toDate()
+                        val formattedDate = if (timestamp != null) {
+                            SimpleDateFormat("dd/MM HH:mm", Locale.getDefault()).format(timestamp)
+                        } else {
+                            "Không rõ thời gian"
+                        }
 
-                    val menuItem = menu.add("$formattedDate - $title")
-                    menuItem.setOnMenuItemClickListener {
-                        loadChatMessages(chatId) // Tải tin nhắn cũ
-                        true
+                        val menuItem = menu.add("$formattedDate - $title")
+                        menuItem.setOnMenuItemClickListener {
+                            loadChatMessages(chatId) // Tải tin nhắn cũ
+                            true
+                        }
                     }
                 }
-            }
+        }
     }
 
     // TOUCH MỞ LẠI ĐOẠN CHAT TRONG HISTORY
     @SuppressLint("NotifyDataSetChanged")
-    /*private fun loadChatMessages(chatId: String) {
-        val drawerLayout = findViewById<DrawerLayout>(R.id.drawerLayoutChaiAi)
-
-        db.collection("chat_with_ai").document(chatId).get()
-            .addOnSuccessListener { document ->
-                val messagesList = document.get("messages") as? List<Map<String, Any>>
-                messages.clear()
-
-                messagesList?.forEach {
-                    val text = it["text"] as String
-                    val isUser = it["isUser"] as Boolean
-                    messages.add(ChatAiMessage(text, isUser))
-                }
-
-                chatAiAdapter.notifyDataSetChanged()
-                rvChat.scrollToPosition(messages.size - 1)
-
-                // Đóng Drawer sau khi tải tin nhắn
-                drawerLayout.closeDrawer(GravityCompat.END)
-
-                isChatSaved = true
-
-                //Toast.makeText(this, "Tiếp tục trò chuyện", Toast.LENGTH_SHORT).show()
-            }
-    }*/
     private fun loadChatMessages(chatId: String) {
         val drawerLayout = findViewById<DrawerLayout>(R.id.drawerLayoutChaiAi)
 
@@ -214,7 +202,6 @@ class BlenderBotAiActivity : AppCompatActivity() {
                         val botReply = botResponses[0].generated_text ?: "Không có phản hồi."
                         messages[loadingIndex] = ChatAiMessage(botReply, false)
                     } else {
-                        //messages[loadingIndex] = ChatAiMessage("Bot không có phản hồi.", false)
                         Toast.makeText(this@BlenderBotAiActivity, "Bot không có phản hồi", Toast.LENGTH_LONG).show()
                     }
                 } else {
@@ -225,13 +212,12 @@ class BlenderBotAiActivity : AppCompatActivity() {
 
             override fun onFailure(call: Call<List<BlenderBotResponse>>, t: Throwable) {
                 Toast.makeText(this@BlenderBotAiActivity, "Lỗi kết nối: ${t.message}", Toast.LENGTH_LONG).show()
-                //messages[loadingIndex] = ChatAiMessage("Lỗi kết nối: ${t.message}", false)
                 chatAiAdapter.notifyItemChanged(loadingIndex)
             }
         })
     }
 
-    // LƯU ĐOẠN CHAT VÀO FIREBASE
+    // LƯU ĐOẠN CHAT VÀO FIREBASE, thêm userId để phân biệt người dùng
     private fun saveChatToFirestore() {
         if (messages.isEmpty()) return
 
@@ -247,8 +233,9 @@ class BlenderBotAiActivity : AppCompatActivity() {
                     Toast.makeText(this, "Lưu thất bại: ${it.message}", Toast.LENGTH_SHORT).show()
                 }
         } else {
-            // Nếu là cuộc trò chuyện mới, tạo mới với timestamp
+            // Nếu là cuộc trò chuyện mới, tạo mới với timestamp và userId
             val chatData = hashMapOf(
+                "userId" to (userId ?: "anonymous"),
                 "timestamp" to FieldValue.serverTimestamp(),
                 "messages" to messageList
             )
@@ -279,14 +266,8 @@ class BlenderBotAiActivity : AppCompatActivity() {
         Toast.makeText(this, "Bắt đầu cuộc trò chuyện mới", Toast.LENGTH_SHORT).show()
     }
 
-    /*override fun onPause() {
-        super.onPause()
-        saveChatToFirestore() // Lưu khi app tạm dừng
-    }*/
-
     override fun onDestroy() {
         super.onDestroy()
         saveChatToFirestore() // Lưu khi app đóng
     }
 }
-
