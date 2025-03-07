@@ -102,7 +102,7 @@ class BlenderBotAiActivity : AppCompatActivity() {
 
     // LOAD LỊCH SỬ CHAT, chỉ tải chat của người dùng hiện tại
     private fun loadChatHistory() {
-        val navigationView = findViewById<NavigationView>(R.id.navigationView)
+        val navigationView = findViewById<NavigationView>(R.id.navigationViewChatAi)
         val menu = navigationView.menu
         menu.clear() // Xóa danh sách cũ
 
@@ -110,7 +110,7 @@ class BlenderBotAiActivity : AppCompatActivity() {
         userId?.let { id ->
             db.collection("chat_with_ai")
                 .whereEqualTo("userId", id)  // Lọc theo userId
-                .orderBy("timestamp", Query.Direction.DESCENDING)
+                //.orderBy("timestamp", Query.Direction.DESCENDING)
                 .get()
                 .addOnSuccessListener { result ->
                     for (document in result) {
