@@ -1,6 +1,7 @@
 package huytoandzzx.message_app.activities
 
 import android.annotation.SuppressLint
+import android.app.AlertDialog
 import android.app.Dialog
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -11,6 +12,7 @@ import android.view.ViewGroup
 import android.view.Window
 import android.widget.Button
 import android.widget.TextView
+import android.widget.Toast
 import androidx.core.content.ContextCompat
 import com.google.android.gms.tasks.OnCompleteListener
 import com.google.firebase.firestore.DocumentChange
@@ -74,6 +76,78 @@ class ChatActivity : BaseActivity() {
         binding.imgTheme.setOnClickListener {
             showThemeSelectionDialog()
         }
+
+        binding.imgDelete.setOnClickListener {
+            // Hiển thị hộp thoại xác nhận trước khi xoá
+            AlertDialog.Builder(this)
+                .setTitle("Delete Conversation")
+                .setMessage("Are you sure delete this conversation?")
+                .setPositiveButton("Yes") { dialog, _ ->
+                    // Nếu người dùng xác nhận xoá
+                    conversionId?.let { convId ->
+                        database.collection(Constants.KEY_COLLECTION_CONVERSATIONS)
+                            .document(convId)
+                            .delete()
+                            .addOnSuccessListener {
+                                // Sau khi xoá conversation, tiến hành xoá các tin nhắn liên quan
+                                deleteChatMessages()
+                            }
+                            .addOnFailureListener { _ ->
+                                Toast.makeText(this, "Delete conversation failed", Toast.LENGTH_SHORT).show()
+                            }
+                    } ?: run {
+                        // Nếu không có conversionId, chỉ xoá các tin nhắn
+                        deleteChatMessages()
+                    }
+                    dialog.dismiss()
+                }
+                .setNegativeButton("Cancel") { dialog, _ ->
+                    dialog.dismiss()
+                }
+                .create()
+                .show()
+        }
+    }
+
+    // XOÁ ĐOẠN CHAT
+    private fun deleteChatMessages() {
+        val senderId = preferenceManager.getString(Constants.KEY_USER_ID) ?: ""
+        val receiverId = receiverUser.id ?: ""
+
+        // Lấy tin nhắn với sender là người dùng và receiver là receiverUser
+        database.collection(Constants.KEY_COLLECTION_CHAT)
+            .whereEqualTo(Constants.KEY_SENDER_ID, senderId)
+            .whereEqualTo(Constants.KEY_RECEIVER_ID, receiverId)
+            .get()
+            .addOnSuccessListener { querySnapshot1 ->
+                val batch = database.batch()
+                for (document in querySnapshot1.documents) {
+                    batch.delete(document.reference)
+                }
+                // Lấy tin nhắn với sender là receiverUser và receiver là người dùng
+                database.collection(Constants.KEY_COLLECTION_CHAT)
+                    .whereEqualTo(Constants.KEY_SENDER_ID, receiverId)
+                    .whereEqualTo(Constants.KEY_RECEIVER_ID, senderId)
+                    .get()
+                    .addOnSuccessListener { querySnapshot2 ->
+                        for (document in querySnapshot2.documents) {
+                            batch.delete(document.reference)
+                        }
+                        // Commit batch xoá tất cả tin nhắn
+                        batch.commit().addOnSuccessListener {
+                            Toast.makeText(this, "Delete chat successfully", Toast.LENGTH_SHORT).show()
+                            finish()
+                        }.addOnFailureListener {
+                            Toast.makeText(this, "Delete chat failed", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                    .addOnFailureListener {
+                        Toast.makeText(this, "ERROR", Toast.LENGTH_SHORT).show()
+                    }
+            }
+            .addOnFailureListener {
+                Toast.makeText(this, "ERROR", Toast.LENGTH_SHORT).show()
+            }
     }
 
     // HIỂN THỊ DANH SÁCH THEME
@@ -179,6 +253,7 @@ class ChatActivity : BaseActivity() {
             Constants.KEY_RECEIVER_ID to (receiverUser.id ?: ""),
             Constants.KEY_MESSAGE to binding.inputMessage.text.toString(),
             Constants.KEY_TIMESTAMP to Date(),
+            Constants.KEY_IS_SEEN to false
         )
 
         database.collection(Constants.KEY_COLLECTION_CHAT).add(message)
@@ -193,7 +268,8 @@ class ChatActivity : BaseActivity() {
                 Constants.KEY_RECEIVER_NAME to (receiverUser.name ?: ""),
                 Constants.KEY_RECEIVER_IMAGE to (receiverUser.image ?: ""),
                 Constants.KEY_LAST_MESSAGE to binding.inputMessage.text.toString(),
-                Constants.KEY_TIMESTAMP to Date()
+                Constants.KEY_TIMESTAMP to Date(),
+                Constants.KEY_IS_SEEN to false
             )
             addConversion(conversion)
         }

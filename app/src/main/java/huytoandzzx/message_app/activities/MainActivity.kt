@@ -227,32 +227,48 @@ class MainActivity : BaseActivity(), ConversionListener {
         if (error != null) { return@EventListener }
 
         value?.documentChanges?.forEach { documentChange ->
-            if (documentChange.type == DocumentChange.Type.ADDED) {
-                val chatMessage = ChatMessage().apply {
-                    senderId = documentChange.document.getString(Constants.KEY_SENDER_ID) ?: ""
-                    receiverId = documentChange.document.getString(Constants.KEY_RECEIVER_ID) ?: ""
-                    message = documentChange.document.getString(Constants.KEY_LAST_MESSAGE) ?: ""
-                    dateObject = documentChange.document.getDate(Constants.KEY_TIMESTAMP) ?: Date()
+            when (documentChange.type) {
+                DocumentChange.Type.ADDED -> {
+                    val chatMessage = ChatMessage().apply {
+                        senderId = documentChange.document.getString(Constants.KEY_SENDER_ID) ?: ""
+                        receiverId = documentChange.document.getString(Constants.KEY_RECEIVER_ID) ?: ""
+                        message = documentChange.document.getString(Constants.KEY_LAST_MESSAGE) ?: ""
+                        dateObject = documentChange.document.getDate(Constants.KEY_TIMESTAMP) ?: Date()
 
-                    if (preferenceManager.getString(Constants.KEY_USER_ID) == senderId) {
-                        conversationImage = documentChange.document.getString(Constants.KEY_RECEIVER_IMAGE) ?: ""
-                        conversationName = documentChange.document.getString(Constants.KEY_RECEIVER_NAME) ?: ""
-                        conversationId = documentChange.document.getString(Constants.KEY_RECEIVER_ID) ?: ""
-                    } else {
-                        conversationImage = documentChange.document.getString(Constants.KEY_SENDER_IMAGE) ?: ""
-                        conversationName = documentChange.document.getString(Constants.KEY_SENDER_NAME) ?: ""
-                        conversationId = documentChange.document.getString(Constants.KEY_SENDER_ID) ?: ""
+                        if (preferenceManager.getString(Constants.KEY_USER_ID) == senderId) {
+                            conversationImage = documentChange.document.getString(Constants.KEY_RECEIVER_IMAGE) ?: ""
+                            conversationName = documentChange.document.getString(Constants.KEY_RECEIVER_NAME) ?: ""
+                            conversationId = documentChange.document.getString(Constants.KEY_RECEIVER_ID) ?: ""
+                        } else {
+                            conversationImage = documentChange.document.getString(Constants.KEY_SENDER_IMAGE) ?: ""
+                            conversationName = documentChange.document.getString(Constants.KEY_SENDER_NAME) ?: ""
+                            conversationId = documentChange.document.getString(Constants.KEY_SENDER_ID) ?: ""
+                        }
+                    }
+                    conversations.add(chatMessage)
+                }
+                DocumentChange.Type.MODIFIED -> {
+                    for (i in 0 until conversations.size) {
+                        val senderId = documentChange.document.getString(Constants.KEY_SENDER_ID)
+                        val receiverId = documentChange.document.getString(Constants.KEY_RECEIVER_ID)
+                        if ((conversations[i].senderId == senderId && conversations[i].receiverId == receiverId) ||
+                            (conversations[i].senderId == receiverId && conversations[i].receiverId == senderId)) {
+                            conversations[i].message = documentChange.document.getString(Constants.KEY_LAST_MESSAGE) ?: ""
+                            conversations[i].dateObject = documentChange.document.getDate(Constants.KEY_TIMESTAMP) ?: Date()
+                            break
+                        }
                     }
                 }
-                conversations.add(chatMessage)
-            } else if (documentChange.type == DocumentChange.Type.MODIFIED){
-                for (i in 0 until conversations.size) {
-                    val senderId = documentChange.document.getString(Constants.KEY_SENDER_ID)
-                    val receiverId = documentChange.document.getString(Constants.KEY_RECEIVER_ID)
-                    if (conversations[i].senderId == senderId && conversations[i].receiverId == receiverId) {
-                        conversations[i].message = documentChange.document.getString(Constants.KEY_LAST_MESSAGE)!!
-                        conversations[i].dateObject = documentChange.document.getDate(Constants.KEY_TIMESTAMP)!!
-                        break
+                DocumentChange.Type.REMOVED -> {
+                    // Xoá cuộc trò chuyện khỏi danh sách
+                    for (i in conversations.indices) {
+                        val senderId = documentChange.document.getString(Constants.KEY_SENDER_ID)
+                        val receiverId = documentChange.document.getString(Constants.KEY_RECEIVER_ID)
+                        if ((conversations[i].senderId == senderId && conversations[i].receiverId == receiverId) ||
+                            (conversations[i].senderId == receiverId && conversations[i].receiverId == senderId)) {
+                            conversations.removeAt(i)
+                            break
+                        }
                     }
                 }
             }
@@ -274,6 +290,17 @@ class MainActivity : BaseActivity(), ConversionListener {
         val intent = Intent(applicationContext, ChatActivity::class.java)
         intent.putExtra(Constants.KEY_USER, user)
         startActivity(intent)
+
+        // Cập nhật trạng thái tin nhắn thành đã đọc
+        database.collection(Constants.KEY_COLLECTION_CHAT)
+            .whereEqualTo(Constants.KEY_SENDER_ID, user?.id)
+            .whereEqualTo(Constants.KEY_RECEIVER_ID, preferenceManager.getString(Constants.KEY_USER_ID))
+            .get()
+            .addOnSuccessListener { documents ->
+                for (document in documents) {
+                    document.reference.update(Constants.KEY_IS_SEEN, true)
+                }
+            }
     }
 
     override fun onResume() {
