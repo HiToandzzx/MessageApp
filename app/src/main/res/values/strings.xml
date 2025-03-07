@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">message_app</string>
     <string name="title_activity_test">testActivity</string>
+    <string name="default_web_client_id">1097866309822-206ae2c8koscldj9clfshvsr4g2kf9vk.apps.googleusercontent.com</string>
 </resources>

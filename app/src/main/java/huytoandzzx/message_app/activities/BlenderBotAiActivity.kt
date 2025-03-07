@@ -13,7 +13,6 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.navigation.NavigationView
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query
 import huytoandzzx.message_app.R
 import huytoandzzx.message_app.adapters.ChatAiAdapter
 import huytoandzzx.message_app.models.BlenderBotRequest
