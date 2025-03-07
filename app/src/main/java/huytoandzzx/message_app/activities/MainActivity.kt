@@ -285,14 +285,22 @@ class MainActivity : BaseActivity(), ConversionListener {
                         val receiverId = documentChange.document.getString(Constants.KEY_RECEIVER_ID)
                         if ((conversations[i].senderId == senderId && conversations[i].receiverId == receiverId) ||
                             (conversations[i].senderId == receiverId && conversations[i].receiverId == senderId)) {
+                            // Cập nhật lại tin nhắn và thời gian
                             conversations[i].message = documentChange.document.getString(Constants.KEY_LAST_MESSAGE) ?: ""
                             conversations[i].dateObject = documentChange.document.getDate(Constants.KEY_TIMESTAMP) ?: Date()
+                            // *** Cập nhật lại tên và ảnh theo nickname mới ***
+                            if (preferenceManager.getString(Constants.KEY_USER_ID) == senderId) {
+                                conversations[i].conversationName = documentChange.document.getString(Constants.KEY_RECEIVER_NAME) ?: ""
+                                conversations[i].conversationImage = documentChange.document.getString(Constants.KEY_RECEIVER_IMAGE) ?: ""
+                            } else {
+                                conversations[i].conversationName = documentChange.document.getString(Constants.KEY_SENDER_NAME) ?: ""
+                                conversations[i].conversationImage = documentChange.document.getString(Constants.KEY_SENDER_IMAGE) ?: ""
+                            }
                             break
                         }
                     }
                 }
                 DocumentChange.Type.REMOVED -> {
-                    // Xoá cuộc trò chuyện khỏi danh sách
                     for (i in conversations.indices) {
                         val senderId = documentChange.document.getString(Constants.KEY_SENDER_ID)
                         val receiverId = documentChange.document.getString(Constants.KEY_RECEIVER_ID)

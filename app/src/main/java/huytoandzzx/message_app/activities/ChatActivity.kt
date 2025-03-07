@@ -11,6 +11,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.Window
 import android.widget.Button
+import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
@@ -28,11 +29,10 @@ import huytoandzzx.message_app.utilities.Constants
 import huytoandzzx.message_app.utilities.PreferenceManager
 import java.util.Date
 
-@Suppress("DEPRECATION")
+@Suppress("DEPRECATION", "NAME_SHADOWING")
 class ChatActivity : BaseActivity() {
     private lateinit var binding: ActivityChatBinding
     private lateinit var receiverUser: User
-    //private lateinit var chatMessages: List<ChatMessage>
     private var chatMessages: MutableList<ChatMessage> = mutableListOf()
     private lateinit var chatAdapter: ChatAdapter
     private lateinit var database: FirebaseFirestore
@@ -73,7 +73,7 @@ class ChatActivity : BaseActivity() {
             sendMessage()
         }
 
-        binding.imgTheme.setOnClickListener {
+        /*binding.imgTheme.setOnClickListener {
             showThemeSelectionDialog()
         }
 
@@ -106,8 +106,114 @@ class ChatActivity : BaseActivity() {
                 }
                 .create()
                 .show()
+        }*/
+
+        binding.imgMore.setOnClickListener {
+            showOptionsDialog()
         }
     }
+
+    // OPEN DIALOG CHAT OPTIONS
+    @SuppressLint("MissingInflatedId")
+    private fun showOptionsDialog() {
+        // Inflate layout cho dialog
+        val dialogView = layoutInflater.inflate(R.layout.dialog_options, null)
+        val builder = AlertDialog.Builder(this)
+        builder.setView(dialogView)
+        val dialog = builder.create()
+        dialog.show()
+
+        dialog.window?.setLayout(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+
+        // Lấy tham chiếu tới các view trong dialog
+        val dialogNickName = dialogView.findViewById<androidx.appcompat.widget.AppCompatImageView>(R.id.dialogNickName)
+        val dialogTheme = dialogView.findViewById<androidx.appcompat.widget.AppCompatImageView>(R.id.dialogTheme)
+        val dialogDelete = dialogView.findViewById<androidx.appcompat.widget.AppCompatImageView>(R.id.dialogDelete)
+
+        // Xử lý sự kiện click cho nút NickName: hiển thị dialog thay đổi Nickname
+        dialogNickName.setOnClickListener {
+            val builder = AlertDialog.Builder(this)
+            builder.setTitle("Change Nickname")
+            val input = EditText(this)
+            input.hint = "Enter new nickname"
+            builder.setView(input)
+            builder.setPositiveButton("Save") { dialogInterface, _ ->
+                val newNickname = input.text.toString().trim()
+                if (newNickname.isNotEmpty()) {
+                    conversionId?.let { convId ->
+                        val updateMap = hashMapOf<String, Any>(
+                            Constants.KEY_RECEIVER_NAME to newNickname,
+                            Constants.KEY_TIMESTAMP to Date()
+                        )
+                        database.collection(Constants.KEY_COLLECTION_CONVERSATIONS)
+                            .document(convId)
+                            .update(updateMap)
+                            .addOnSuccessListener {
+                                Toast.makeText(this, "Nickname updated successfully", Toast.LENGTH_SHORT).show()
+                                // Cập nhật receiverUser và hiển thị lại thông tin
+                                receiverUser.name = newNickname
+                                loadReceiverDetails()
+                            }
+                            .addOnFailureListener {
+                                Toast.makeText(this, "Failed to update nickname", Toast.LENGTH_SHORT).show()
+                            }
+                    } ?: run {
+                        // Nếu chưa có conversionId thì cập nhật cục bộ
+                        receiverUser.name = newNickname
+                        loadReceiverDetails()
+                        Toast.makeText(this, "Nickname updated locally", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                dialogInterface.dismiss()
+            }
+            builder.setNegativeButton("Cancel") { dialogInterface, _ ->
+                dialogInterface.dismiss()
+            }
+            builder.show()
+            dialog.dismiss()
+        }
+
+        // Xử lý sự kiện click cho nút Theme: hiện dialog chọn theme
+        dialogTheme.setOnClickListener {
+            showThemeSelectionDialog()
+            dialog.dismiss()
+        }
+
+        // Xử lý sự kiện click cho nút Delete: hiện hộp thoại xác nhận xoá
+        dialogDelete.setOnClickListener {
+            AlertDialog.Builder(this)
+                .setTitle("Delete Conversation")
+                .setMessage("Are you sure delete this conversation?")
+                .setPositiveButton("Yes") { confirmDialog, _ ->
+                    conversionId?.let { convId ->
+                        database.collection(Constants.KEY_COLLECTION_CONVERSATIONS)
+                            .document(convId)
+                            .delete()
+                            .addOnSuccessListener {
+                                // Sau khi xoá conversation, tiến hành xoá các tin nhắn liên quan
+                                deleteChatMessages()
+                            }
+                            .addOnFailureListener {
+                                Toast.makeText(this, "Delete conversation failed", Toast.LENGTH_SHORT).show()
+                            }
+                    } ?: run {
+                        // Nếu không có conversionId, chỉ xoá các tin nhắn
+                        deleteChatMessages()
+                    }
+                    confirmDialog.dismiss()
+                }
+                .setNegativeButton("Cancel") { confirmDialog, _ ->
+                    confirmDialog.dismiss()
+                }
+                .create()
+                .show()
+            dialog.dismiss()
+        }
+    }
+
 
     // XOÁ ĐOẠN CHAT
     private fun deleteChatMessages() {
@@ -248,17 +354,17 @@ class ChatActivity : BaseActivity() {
     }
 
     private fun sendMessage() {
+        val messageText = binding.inputMessage.text.toString()
         val message = hashMapOf<String, Any>(
             Constants.KEY_SENDER_ID to (preferenceManager.getString(Constants.KEY_USER_ID) ?: ""),
             Constants.KEY_RECEIVER_ID to (receiverUser.id ?: ""),
-            Constants.KEY_MESSAGE to binding.inputMessage.text.toString(),
+            Constants.KEY_MESSAGE to messageText,
             Constants.KEY_TIMESTAMP to Date(),
-            Constants.KEY_IS_SEEN to false
         )
 
         database.collection(Constants.KEY_COLLECTION_CHAT).add(message)
         if (conversionId != null) {
-            updateConversion(binding.inputMessage.text.toString())
+            updateConversion(messageText)
         } else {
             val conversion = hashMapOf<String, Any>(
                 Constants.KEY_SENDER_ID to (preferenceManager.getString(Constants.KEY_USER_ID) ?: ""),
@@ -267,13 +373,28 @@ class ChatActivity : BaseActivity() {
                 Constants.KEY_RECEIVER_ID to (receiverUser.id ?: ""),
                 Constants.KEY_RECEIVER_NAME to (receiverUser.name ?: ""),
                 Constants.KEY_RECEIVER_IMAGE to (receiverUser.image ?: ""),
-                Constants.KEY_LAST_MESSAGE to binding.inputMessage.text.toString(),
+                Constants.KEY_LAST_MESSAGE to messageText,
                 Constants.KEY_TIMESTAMP to Date(),
-                Constants.KEY_IS_SEEN to false
             )
             addConversion(conversion)
         }
         binding.inputMessage.setText("")
+    }
+
+    private fun addConversion(conversion: HashMap<String, Any>) {
+        database.collection(Constants.KEY_COLLECTION_CONVERSATIONS)
+            .add(conversion)
+            .addOnSuccessListener { documentReference ->
+                conversionId = documentReference.id
+            }
+    }
+
+    private fun updateConversion(message: String) {
+        val documentReference = database.collection(Constants.KEY_COLLECTION_CONVERSATIONS).document(conversionId!!)
+        documentReference.update(
+            Constants.KEY_LAST_MESSAGE, message,
+            Constants.KEY_TIMESTAMP, Date()
+        )
     }
 
     // CHECK USER CÓ ONLINE
@@ -357,28 +478,36 @@ class ChatActivity : BaseActivity() {
     }
 
     private fun loadReceiverDetails() {
+        // Khởi tạo receiverUser từ Intent
         receiverUser = intent.getSerializableExtra(Constants.KEY_USER) as User
-        binding.tvName.text = receiverUser.name
+
+        // Nếu có conversionId, lấy thông tin cập nhật từ Firestore
+        if (conversionId != null) {
+            database.collection(Constants.KEY_COLLECTION_CONVERSATIONS)
+                .document(conversionId!!)
+                .get()
+                .addOnSuccessListener { document ->
+                    if (document.exists()) {
+                        val updatedName = document.getString(Constants.KEY_RECEIVER_NAME)
+                        if (!updatedName.isNullOrEmpty()) {
+                            receiverUser.name = updatedName
+                        }
+                    }
+                    // Cập nhật giao diện với tên mới
+                    binding.tvName.text = receiverUser.name
+                }
+                .addOnFailureListener {
+                    binding.tvName.text = receiverUser.name
+                }
+        } else {
+            binding.tvName.text = receiverUser.name
+        }
+
+        // Hiển thị hình ảnh
         receiverUser.image?.let {
             val bitmap = getBitmapFromEncodedString(it)
             binding.imageAvatar.setImageBitmap(bitmap)
         }
-    }
-
-    private fun addConversion(conversion: HashMap<String, Any>) {
-        database.collection(Constants.KEY_COLLECTION_CONVERSATIONS)
-            .add(conversion)
-            .addOnSuccessListener { documentReference ->
-                conversionId = documentReference.id
-            }
-    }
-
-    private fun updateConversion(message: String) {
-        val documentReference = database.collection(Constants.KEY_COLLECTION_CONVERSATIONS).document(conversionId!!)
-        documentReference.update(
-            Constants.KEY_LAST_MESSAGE, message,
-            Constants.KEY_TIMESTAMP, Date()
-        )
     }
 
     private fun checkForConversion() {

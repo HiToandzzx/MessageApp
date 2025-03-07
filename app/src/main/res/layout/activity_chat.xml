@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
@@ -7,8 +8,6 @@
     android:background="#2a9d8f"
     android:animateLayoutChanges="true"
     tools:context=".activities.ChatActivity">
-
-    <!--BACKGROUND-->
 
     <!-- HEADER BACKGROUND -->
     <View
@@ -19,8 +18,7 @@
         android:background="@drawable/bg_content_bottom"
         app:layout_constraintBottom_toTopOf="@+id/layoutSend"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.0"
-        tools:layout_editor_absoluteX="0dp" />
+        app:layout_constraintVertical_bias="0.0" />
 
     <View
         android:id="@+id/headerBackground"
@@ -29,7 +27,7 @@
         android:background="#2a9d8f"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <!--BUTTON BACK-->
+    <!-- BUTTON BACK -->
     <androidx.appcompat.widget.AppCompatImageView
         android:id="@+id/imageBack"
         android:layout_width="30dp"
@@ -40,18 +38,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"/>
 
-    <!--BUTTON CALL-->
-    <androidx.appcompat.widget.AppCompatImageView
-        android:id="@+id/imgTheme"
-        android:layout_width="30dp"
-        android:layout_height="30dp"
-        android:layout_marginEnd="20dp"
-        android:layout_marginTop="20dp"
-        android:src="@drawable/ic_theme"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent"/>
-
-    <!--USER AVATAR-->
+    <!-- USER AVATAR -->
     <com.makeramen.roundedimageview.RoundedImageView
         android:id="@+id/imageAvatar"
         android:layout_width="50dp"
@@ -65,7 +52,7 @@
         app:layout_constraintTop_toTopOf="@id/imageBack"
         app:layout_constraintBottom_toBottomOf="@id/imageBack"/>
 
-    <!--USER NAME-->
+    <!-- USER NAME -->
     <TextView
         android:id="@+id/tvName"
         android:layout_width="0dp"
@@ -78,7 +65,7 @@
         android:textSize="20sp"
         android:textStyle="bold"
         app:layout_constraintBottom_toBottomOf="@id/imageBack"
-        app:layout_constraintEnd_toStartOf="@id/imgTheme"
+        app:layout_constraintEnd_toStartOf="@id/imgMore"
         app:layout_constraintStart_toEndOf="@id/imageAvatar"
         app:layout_constraintTop_toTopOf="@id/imageBack" />
 
@@ -113,19 +100,7 @@
             app:layout_constraintStart_toEndOf="@id/imageStatus"/>
     </androidx.constraintlayout.widget.ConstraintLayout>
 
-    <!--<TextView
-        android:id="@+id/textAvailability"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="#008000"
-        android:padding="2dp"
-        android:text="Active now"
-        android:textColor="@color/white"
-        android:textSize="10sp"
-        android:visibility="gone"
-        app:layout_constraintTop_toBottomOf="@id/viewSupporter" />-->
-
-    <!--CONVERSATION-->
+    <!-- CONVERSATION -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/chatRecyclerView"
         android:layout_width="match_parent"
@@ -150,7 +125,7 @@
         app:layout_constraintTop_toTopOf="@id/vBg"
         android:indeterminateTint="@color/primary"/>
 
-    <!--BUTTON SEND-->
+    <!-- BUTTON SEND -->
     <FrameLayout
         android:id="@+id/layoutSend"
         android:layout_width="50dp"
@@ -168,7 +143,7 @@
             android:background="@drawable/ic_send" />
     </FrameLayout>
 
-    <!--INPUT MESSAGE-->
+    <!-- INPUT MESSAGE -->
     <EditText
         android:id="@+id/inputMessage"
         android:layout_width="0dp"
@@ -186,7 +161,17 @@
         android:textColorHint="@color/black"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="@id/layoutSend"
-        app:layout_constraintStart_toStartOf="parent"
-        />
+        app:layout_constraintStart_toStartOf="parent"/>
+
+    <!-- NEW BUTTON: MORE OPTIONS -->
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/imgMore"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:layout_marginEnd="20dp"
+        android:layout_marginTop="20dp"
+        android:src="@drawable/ic_setting_chat"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

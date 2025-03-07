@@ -41,7 +41,7 @@
                 android:layout_width="70dp"
                 android:layout_height="100dp"
                 android:background="@color/theme_shade"
-                android:layout_margin="8dp"/>
+                android:layout_margin="8dp" />
 
             <TextView
                 android:layout_width="wrap_content"
