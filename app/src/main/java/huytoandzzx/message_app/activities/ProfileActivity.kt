@@ -10,6 +10,7 @@ import android.util.Base64
 import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import com.bumptech.glide.Glide
 import com.google.firebase.firestore.FirebaseFirestore
 import huytoandzzx.message_app.databinding.ActivityProfileBinding
 import huytoandzzx.message_app.utilities.Constants
@@ -22,7 +23,8 @@ import java.security.NoSuchAlgorithmException
 class ProfileActivity : AppCompatActivity() {
     private lateinit var binding: ActivityProfileBinding
     private lateinit var preferenceManager: PreferenceManager
-    private lateinit var encodedImage: String
+    // encodedImage sẽ lưu giá trị mới (nếu người dùng chọn ảnh) hoặc giữ giá trị cũ
+    private var encodedImage: String = ""
     private var userDocumentId: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -60,14 +62,31 @@ class ProfileActivity : AppCompatActivity() {
         binding.etEmailProfile.setText(preferenceManager.getString(Constants.KEY_EMAIL))
 
         val image = preferenceManager.getString(Constants.KEY_IMAGE)
-        val decodedBytes = Base64.decode(image, Base64.DEFAULT)
-        val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
-        binding.myImage.setImageBitmap(bitmap)
+        // Lưu lại image hiện tại vào encodedImage để dùng khi update (nếu người dùng không chọn ảnh mới)
+        encodedImage = image.toString()
+        if (image != null) {
+            if (image.isNotEmpty()) {
+                if (image.startsWith("http") || image.startsWith("https")) {
+                    // Tài khoản Google lưu URL ảnh
+                    Glide.with(this)
+                        .load(image)
+                        .placeholder(com.google.android.material.R.drawable.mtrl_ic_error)
+                        .into(binding.myImage)
+                } else {
+                    // Giả sử image là chuỗi Base64 đã mã hóa
+                    val decodedBytes = Base64.decode(image, Base64.DEFAULT)
+                    val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+                    binding.myImage.setImageBitmap(bitmap)
+                }
+            } else {
+                binding.myImage.setImageResource(android.R.color.darker_gray)
+            }
+        }
 
         userDocumentId = preferenceManager.getString(Constants.KEY_USER_ID)
     }
 
-
+    // Kiểm tra dữ liệu nhập vào cho cập nhật profile
     private fun isValidUpdateDetails(): Boolean {
         val emailInput = binding.etEmailProfile.text.toString().trim()
         if (emailInput.isNotEmpty() && !android.util.Patterns.EMAIL_ADDRESS.matcher(emailInput).matches()) {
@@ -79,29 +98,49 @@ class ProfileActivity : AppCompatActivity() {
         val newPassword = binding.etNewPassword.text.toString().trim()
         val confirmNewPassword = binding.etConfirmNewPassword.text.toString().trim()
 
-        // Nếu có nhập thông tin mật khẩu thì bắt buộc phải điền đủ các trường
-        if (currentPassword.isNotEmpty() || newPassword.isNotEmpty() || confirmNewPassword.isNotEmpty()) {
-            if (currentPassword.isEmpty()) {
-                showToast("Current password is required")
-                return false
+        // Lấy mật khẩu đã lưu (nếu có). Tài khoản Google thường không có mật khẩu lưu sẵn.
+        val storedHashedPassword = preferenceManager.getString(Constants.KEY_PASSWORD)
+
+        if (storedHashedPassword.isNullOrEmpty()) {
+            // Tài khoản Google (không có mật khẩu)
+            if (currentPassword.isNotEmpty() || newPassword.isNotEmpty() || confirmNewPassword.isNotEmpty()) {
+                // Nếu người dùng muốn cập nhật mật khẩu, chỉ cần nhập newPassword và confirmNewPassword
+                if (newPassword.isEmpty()) {
+                    showToast("New password is required")
+                    return false
+                }
+                if (confirmNewPassword.isEmpty()) {
+                    showToast("Confirm new password is required")
+                    return false
+                }
+                if (newPassword != confirmNewPassword) {
+                    showToast("New passwords do not match")
+                    return false
+                }
             }
-            if (newPassword.isEmpty()) {
-                showToast("New password is required")
-                return false
-            }
-            if (confirmNewPassword.isEmpty()) {
-                showToast("Confirm new password is required")
-                return false
-            }
-            if (newPassword != confirmNewPassword) {
-                showToast("New passwords do not match")
-                return false
-            }
-            // So sánh mật khẩu hiện tại với mật khẩu đã lưu (nếu có)
-            val storedHashedPassword = preferenceManager.getString(Constants.KEY_PASSWORD)
-            if (!storedHashedPassword.isNullOrEmpty() && hashPassword(currentPassword) != storedHashedPassword) {
-                showToast("Current password is incorrect")
-                return false
+        } else {
+            // Tài khoản có mật khẩu (đăng ký email)
+            if (currentPassword.isNotEmpty() || newPassword.isNotEmpty() || confirmNewPassword.isNotEmpty()) {
+                if (currentPassword.isEmpty()) {
+                    showToast("Current password is required")
+                    return false
+                }
+                if (newPassword.isEmpty()) {
+                    showToast("New password is required")
+                    return false
+                }
+                if (confirmNewPassword.isEmpty()) {
+                    showToast("Confirm new password is required")
+                    return false
+                }
+                if (newPassword != confirmNewPassword) {
+                    showToast("New passwords do not match")
+                    return false
+                }
+                if (hashPassword(currentPassword) != storedHashedPassword) {
+                    showToast("Current password is incorrect")
+                    return false
+                }
             }
         }
         return true
@@ -133,16 +172,15 @@ class ProfileActivity : AppCompatActivity() {
         if (emailInput.isNotEmpty()) {
             userUpdates[Constants.KEY_EMAIL] = emailInput
         }
+        // Nếu người dùng đã chọn ảnh mới hoặc encodedImage vẫn có giá trị cũ
         if (encodedImage.isNotEmpty()) {
             userUpdates[Constants.KEY_IMAGE] = encodedImage
         }
 
-        // Xử lý cập nhật mật khẩu nếu có
-        val currentPassword = binding.etCurrentPassword.text.toString().trim()
+        // Xử lý cập nhật mật khẩu nếu có nhập
         val newPassword = binding.etNewPassword.text.toString().trim()
-        if (currentPassword.isNotEmpty() && newPassword.isNotEmpty()) {
-            val hashedPassword = hashPassword(newPassword)
-            userUpdates[Constants.KEY_PASSWORD] = hashedPassword
+        if (newPassword.isNotEmpty()) {
+            userUpdates[Constants.KEY_PASSWORD] = hashPassword(newPassword)
         }
 
         // Nếu không có trường nào được cập nhật thì thông báo và thoát
@@ -158,7 +196,7 @@ class ProfileActivity : AppCompatActivity() {
                 .update(userUpdates)
                 .addOnSuccessListener {
                     loading(false)
-                    // Cập nhật lại thông tin trong PreferenceManager nếu có thay đổi
+                    // Cập nhật lại PreferenceManager nếu có thay đổi
                     if (userUpdates.containsKey(Constants.KEY_NAME))
                         preferenceManager.putString(Constants.KEY_NAME, nameInput)
                     if (userUpdates.containsKey(Constants.KEY_EMAIL))
@@ -199,6 +237,7 @@ class ProfileActivity : AppCompatActivity() {
                     val bitmap = BitmapFactory.decodeStream(inputStream)
                     binding.myImage.setImageBitmap(bitmap)
                     binding.tvAddImage.visibility = View.GONE
+                    // Cập nhật encodedImage với ảnh mới đã chọn
                     encodedImage = encodeImage(bitmap)
                 } catch (e: FileNotFoundException) {
                     e.printStackTrace()

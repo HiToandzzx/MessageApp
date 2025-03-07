@@ -14,6 +14,10 @@ import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.view.GravityCompat
+import com.bumptech.glide.Glide
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentChange
 import com.google.firebase.firestore.EventListener
 import com.google.firebase.firestore.FieldValue
@@ -35,7 +39,8 @@ class MainActivity : BaseActivity(), ConversionListener {
     private lateinit var preferenceManager: PreferenceManager
     private var conversations: MutableList<ChatMessage> = mutableListOf()
     private lateinit var conversationsAdapter: RecentConversationsAdapter
-    private lateinit var database : FirebaseFirestore
+    private lateinit var database: FirebaseFirestore
+    private lateinit var googleSignInClient: com.google.android.gms.auth.api.signin.GoogleSignInClient
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,18 +48,24 @@ class MainActivity : BaseActivity(), ConversionListener {
         setContentView(binding.root)
 
         val chatAI = findViewById<ImageView>(R.id.chatAI)
-
-        // Hiệu ứng xoay tròn
+        // Hiệu ứng xoay tròn cho Chat AI
         val rotateAnimation = ObjectAnimator.ofFloat(chatAI, "rotation", 0f, 360f)
         rotateAnimation.duration = 2000
         rotateAnimation.repeatCount = ObjectAnimator.INFINITE
         rotateAnimation.interpolator = LinearInterpolator()
         rotateAnimation.start()
 
+        // Khởi tạo GoogleSignInClient
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(getString(R.string.default_web_client_id)) // Client ID từ Firebase Console
+            .requestEmail()
+            .build()
+        googleSignInClient = GoogleSignIn.getClient(this, gso)
+
         preferenceManager = PreferenceManager(applicationContext)
         init()
-        loadUserDetails()
-        //loadNavUserDetails()
+        loadUserDetails() // Load thông tin user (bao gồm cả user đăng nhập bằng Google)
+        //loadNavUserDetails()  // Nếu muốn load thông tin user ở navigation header
         getToken()
         setListeners()
         listenConversations()
@@ -79,7 +90,7 @@ class MainActivity : BaseActivity(), ConversionListener {
     private fun setListeners() {
         //binding.imgSignOut.setOnClickListener { signOut() }
 
-        binding.fabNewChat.setOnClickListener{
+        binding.fabNewChat.setOnClickListener {
             startActivity(Intent(applicationContext, UsersActivity::class.java))
         }
 
@@ -105,7 +116,7 @@ class MainActivity : BaseActivity(), ConversionListener {
             true
         }
 
-        binding.chatAI.setOnClickListener{
+        binding.chatAI.setOnClickListener {
             startActivity(Intent(applicationContext, BlenderBotAiActivity::class.java))
         }
     }
@@ -122,7 +133,7 @@ class MainActivity : BaseActivity(), ConversionListener {
         conversationsAdapter.updateList(filteredList)
     }
 
-    // Hàm hiển thị ảnh và tên user
+    // Hàm hiển thị ảnh và tên user (hỗ trợ cả user đăng nhập bằng Google)
     private fun loadUserDetails() {
         val userId = preferenceManager.getString(Constants.KEY_USER_ID)
         if (!userId.isNullOrEmpty()) {
@@ -133,21 +144,32 @@ class MainActivity : BaseActivity(), ConversionListener {
                 .addOnSuccessListener { document ->
                     if (document != null && document.exists()) {
                         val name = document.getString(Constants.KEY_NAME) ?: ""
-                        val encodedImage = document.getString(Constants.KEY_IMAGE) ?: ""
+                        val image = document.getString(Constants.KEY_IMAGE) ?: ""
 
-                        // Cập nhật giao diện
+                        // Cập nhật tên người dùng
                         binding.tvUsername.text = name
-                        if (encodedImage.isNotEmpty()) {
-                            val bytes = Base64.decode(encodedImage, Base64.DEFAULT)
-                            val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-                            binding.imgProfile.setImageBitmap(bitmap)
+
+                        // Kiểm tra nếu image là URL (trường hợp Google Sign-In lưu photoUrl) hay chuỗi Base64
+                        if (image.isNotEmpty()) {
+                            if (image.startsWith("http") || image.startsWith("https")) {
+                                // Load ảnh từ URL sử dụng Glide
+                                Glide.with(this)
+                                    .load(image)
+                                    .placeholder(R.drawable.ic_default_profile)
+                                    .into(binding.imgProfile)
+                            } else {
+                                // Giả sử image là chuỗi Base64 đã mã hóa
+                                val bytes = Base64.decode(image, Base64.DEFAULT)
+                                val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                                binding.imgProfile.setImageBitmap(bitmap)
+                            }
                         } else {
                             binding.imgProfile.setImageResource(R.drawable.ic_default_profile)
                         }
 
-                        // (Tùy chọn) Cập nhật lại preferenceManager nếu cần
+                        // (Tùy chọn) Cập nhật lại PreferenceManager nếu cần
                         preferenceManager.putString(Constants.KEY_NAME, name)
-                        preferenceManager.putString(Constants.KEY_IMAGE, encodedImage)
+                        preferenceManager.putString(Constants.KEY_IMAGE, image)
                     }
                 }
                 .addOnFailureListener { e ->
@@ -156,19 +178,25 @@ class MainActivity : BaseActivity(), ConversionListener {
         }
     }
 
-    // Hàm hiển thị ảnh và tên user ở nav
+    // Hàm hiển thị thông tin người dùng ở header Navigation Drawer
     private fun loadNavUserDetails() {
         val headerView = binding.navigationView.getHeaderView(0)
         val navUsername = headerView.findViewById<TextView>(R.id.tvHeaderUsername)
         val navImage = headerView.findViewById<ImageView>(R.id.imgHeaderProfile)
 
         navUsername.text = preferenceManager.getString(Constants.KEY_NAME)
-
-        val encodedImage = preferenceManager.getString(Constants.KEY_IMAGE)
-        if (!encodedImage.isNullOrEmpty()) {
-            val bytes = Base64.decode(encodedImage, Base64.DEFAULT)
-            val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-            navImage.setImageBitmap(bitmap)
+        val image = preferenceManager.getString(Constants.KEY_IMAGE)
+        if (!image.isNullOrEmpty()) {
+            if (image.startsWith("http") || image.startsWith("https")) {
+                Glide.with(this)
+                    .load(image)
+                    .placeholder(R.drawable.ic_default_profile)
+                    .into(navImage)
+            } else {
+                val bytes = Base64.decode(image, Base64.DEFAULT)
+                val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                navImage.setImageBitmap(bitmap)
+            }
         } else {
             navImage.setImageResource(R.drawable.ic_default_profile)
         }
@@ -204,7 +232,6 @@ class MainActivity : BaseActivity(), ConversionListener {
     // SIGN OUT
     private fun signOut() {
         showToast("Signing out...")
-
         val database = FirebaseFirestore.getInstance()
         val documentReference = database.collection(Constants.KEY_COLLECTION_USERS)
             .document(preferenceManager.getString(Constants.KEY_USER_ID)!!)
@@ -215,9 +242,14 @@ class MainActivity : BaseActivity(), ConversionListener {
 
         documentReference.update(updates)
             .addOnSuccessListener {
-                preferenceManager.clear()
-                startActivity(Intent(applicationContext, OnBoardingActivity::class.java))
-                finish()
+                // Đăng xuất khỏi Firebase Authentication
+                FirebaseAuth.getInstance().signOut()
+                // Đăng xuất khỏi Google
+                googleSignInClient.signOut().addOnCompleteListener {
+                    preferenceManager.clear()
+                    startActivity(Intent(applicationContext, OnBoardingActivity::class.java))
+                    finish()
+                }
             }
             .addOnFailureListener { showToast("Unable to sign out") }
     }
@@ -290,17 +322,6 @@ class MainActivity : BaseActivity(), ConversionListener {
         val intent = Intent(applicationContext, ChatActivity::class.java)
         intent.putExtra(Constants.KEY_USER, user)
         startActivity(intent)
-
-        // Cập nhật trạng thái tin nhắn thành đã đọc
-        database.collection(Constants.KEY_COLLECTION_CHAT)
-            .whereEqualTo(Constants.KEY_SENDER_ID, user?.id)
-            .whereEqualTo(Constants.KEY_RECEIVER_ID, preferenceManager.getString(Constants.KEY_USER_ID))
-            .get()
-            .addOnSuccessListener { documents ->
-                for (document in documents) {
-                    document.reference.update(Constants.KEY_IS_SEEN, true)
-                }
-            }
     }
 
     override fun onResume() {
