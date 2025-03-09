@@ -73,41 +73,6 @@ class ChatActivity : BaseActivity() {
             sendMessage()
         }
 
-        /*binding.imgTheme.setOnClickListener {
-            showThemeSelectionDialog()
-        }
-
-        binding.imgDelete.setOnClickListener {
-            // Hiển thị hộp thoại xác nhận trước khi xoá
-            AlertDialog.Builder(this)
-                .setTitle("Delete Conversation")
-                .setMessage("Are you sure delete this conversation?")
-                .setPositiveButton("Yes") { dialog, _ ->
-                    // Nếu người dùng xác nhận xoá
-                    conversionId?.let { convId ->
-                        database.collection(Constants.KEY_COLLECTION_CONVERSATIONS)
-                            .document(convId)
-                            .delete()
-                            .addOnSuccessListener {
-                                // Sau khi xoá conversation, tiến hành xoá các tin nhắn liên quan
-                                deleteChatMessages()
-                            }
-                            .addOnFailureListener { _ ->
-                                Toast.makeText(this, "Delete conversation failed", Toast.LENGTH_SHORT).show()
-                            }
-                    } ?: run {
-                        // Nếu không có conversionId, chỉ xoá các tin nhắn
-                        deleteChatMessages()
-                    }
-                    dialog.dismiss()
-                }
-                .setNegativeButton("Cancel") { dialog, _ ->
-                    dialog.dismiss()
-                }
-                .create()
-                .show()
-        }*/
-
         binding.imgMore.setOnClickListener {
             showOptionsDialog()
         }

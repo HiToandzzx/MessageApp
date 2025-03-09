@@ -133,7 +133,7 @@ class MainActivity : BaseActivity(), ConversionListener {
         conversationsAdapter.updateList(filteredList)
     }
 
-    // Hàm hiển thị ảnh và tên user (hỗ trợ cả user đăng nhập bằng Google)
+    // Hàm hiển thị ảnh và tên user
     private fun loadUserDetails() {
         val userId = preferenceManager.getString(Constants.KEY_USER_ID)
         if (!userId.isNullOrEmpty()) {
@@ -144,32 +144,21 @@ class MainActivity : BaseActivity(), ConversionListener {
                 .addOnSuccessListener { document ->
                     if (document != null && document.exists()) {
                         val name = document.getString(Constants.KEY_NAME) ?: ""
-                        val image = document.getString(Constants.KEY_IMAGE) ?: ""
+                        val encodedImage = document.getString(Constants.KEY_IMAGE) ?: ""
 
-                        // Cập nhật tên người dùng
+                        // Cập nhật giao diện
                         binding.tvUsername.text = name
-
-                        // Kiểm tra nếu image là URL (trường hợp Google Sign-In lưu photoUrl) hay chuỗi Base64
-                        if (image.isNotEmpty()) {
-                            if (image.startsWith("http") || image.startsWith("https")) {
-                                // Load ảnh từ URL sử dụng Glide
-                                Glide.with(this)
-                                    .load(image)
-                                    .placeholder(R.drawable.ic_default_profile)
-                                    .into(binding.imgProfile)
-                            } else {
-                                // Giả sử image là chuỗi Base64 đã mã hóa
-                                val bytes = Base64.decode(image, Base64.DEFAULT)
-                                val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-                                binding.imgProfile.setImageBitmap(bitmap)
-                            }
+                        if (encodedImage.isNotEmpty()) {
+                            val bytes = Base64.decode(encodedImage, Base64.DEFAULT)
+                            val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                            binding.imgProfile.setImageBitmap(bitmap)
                         } else {
                             binding.imgProfile.setImageResource(R.drawable.ic_default_profile)
                         }
 
-                        // (Tùy chọn) Cập nhật lại PreferenceManager nếu cần
+                        // (Tùy chọn) Cập nhật lại preferenceManager nếu cần
                         preferenceManager.putString(Constants.KEY_NAME, name)
-                        preferenceManager.putString(Constants.KEY_IMAGE, image)
+                        preferenceManager.putString(Constants.KEY_IMAGE, encodedImage)
                     }
                 }
                 .addOnFailureListener { e ->
