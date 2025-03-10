@@ -10,6 +10,7 @@ import huytoandzzx.message_app.listeners.UserListener
 import huytoandzzx.message_app.models.User
 import huytoandzzx.message_app.utilities.Constants
 import huytoandzzx.message_app.utilities.PreferenceManager
+import java.util.Locale
 
 class UsersActivity : BaseActivity() , UserListener {
     private lateinit var binding: ActivityUsersBinding
@@ -57,6 +58,8 @@ class UsersActivity : BaseActivity() , UserListener {
                     }
 
                     if (users.isNotEmpty()) {
+                        users.sortBy { it.name?.lowercase(Locale.ROOT) }
+
                         val usersAdapter = UsersAdapter(users, this)
                         binding.userRecyclerView.adapter = usersAdapter
                         binding.userRecyclerView.visibility = View.VISIBLE
