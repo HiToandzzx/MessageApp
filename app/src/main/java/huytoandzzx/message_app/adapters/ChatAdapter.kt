@@ -1,10 +1,14 @@
 package huytoandzzx.message_app.adapters
 
 import android.annotation.SuppressLint
+import android.app.AlertDialog
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
+import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.core.graphics.drawable.DrawableCompat
 import androidx.recyclerview.widget.RecyclerView
 import huytoandzzx.message_app.R
@@ -16,7 +20,8 @@ class ChatAdapter(
     private val chatMessages: List<ChatMessage>,
     private val receiverProfileImage: Bitmap?,
     private val senderId: String,
-    private var themeColor: Int = Color.parseColor("#20A090")
+    private var themeColor: Int = Color.parseColor("#20A090"),
+    private val reactionListener: (ChatMessage, String) -> Unit // callback khi reaction được chọn
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     companion object {
@@ -70,12 +75,66 @@ class ChatAdapter(
             binding.tvMessage.text = chatMessage.message
             binding.textDateTime.text = chatMessage.dateTime
 
-            // Lấy drawable nền của tvMessage (được định nghĩa từ bg_sent_message)
+            // Áp dụng theme cho background của tin nhắn gửi
             val backgroundDrawable = binding.tvMessage.background
-            // Thay đổi tint của drawable theo màu theme đã chọn từ adapter
             backgroundDrawable?.let {
                 DrawableCompat.setTint(it, this@ChatAdapter.themeColor)
             }
+
+            // Hiển thị reaction nếu có
+            if (chatMessage.reaction.isNotEmpty()) {
+                binding.tvReaction.visibility = View.VISIBLE
+                binding.tvReaction.text = chatMessage.reaction
+            } else {
+                binding.tvReaction.visibility = View.GONE
+            }
+
+            // Long click vào tin nhắn để chọn reaction
+            binding.tvMessage.setOnLongClickListener {
+                showReactionDialog(chatMessage)
+                true
+            }
+
+            // Nhấn vào tvReaction để xoá reaction hiện tại
+            binding.tvReaction.setOnClickListener {
+                reactionListener(chatMessage, "") // Gửi empty string để xoá reaction
+            }
+        }
+
+        private fun showReactionDialog(chatMessage: ChatMessage) {
+            val context = binding.root.context
+            val dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_reactions, null)
+            val layoutReactions = dialogView.findViewById<LinearLayout>(R.id.layoutReactions)
+
+            // Tạo AlertDialog và thiết lập view cho nó
+            val builder = AlertDialog.Builder(context)
+                .setView(dialogView)
+            val alertDialog = builder.create()
+
+            // Mảng các reaction để hiển thị theo hàng ngang
+            val reactions = arrayOf("👍", "❤️", "😂", "😮", "😢", "\uD83D\uDE21")
+
+            // Tạo TextView cho từng reaction và thêm vào layout
+            for (reaction in reactions) {
+                val textView = TextView(context).apply {
+                    text = reaction
+                    textSize = 24f
+                    setPadding(16, 16, 16, 16)
+                    val params = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    )
+                    params.setMargins(16, 0, 16, 0)
+                    layoutParams = params
+
+                    setOnClickListener {
+                        reactionListener(chatMessage, reaction)
+                        alertDialog.dismiss()
+                    }
+                }
+                layoutReactions.addView(textView)
+            }
+            alertDialog.show()
         }
     }
 
@@ -85,11 +144,64 @@ class ChatAdapter(
         fun setData(chatMessage: ChatMessage, profileImage: Bitmap?) {
             binding.tvMessage.text = chatMessage.message
             binding.textDateTime.text = chatMessage.dateTime
+
+            // Hiển thị reaction nếu có
+            if (chatMessage.reaction.isNotEmpty()) {
+                binding.tvReaction.visibility = View.VISIBLE
+                binding.tvReaction.text = chatMessage.reaction
+            } else {
+                binding.tvReaction.visibility = View.GONE
+            }
+
             if (profileImage != null) {
                 binding.imageProfile.setImageBitmap(profileImage)
             } else {
                 binding.imageProfile.setImageResource(R.drawable.ic_default_profile)
             }
+
+            // Long click vào tin nhắn để chọn reaction
+            binding.tvMessage.setOnLongClickListener {
+                showReactionDialog(chatMessage)
+                true
+            }
+
+            // Nhấn vào tvReaction để xoá reaction hiện tại
+            binding.tvReaction.setOnClickListener {
+                reactionListener(chatMessage, "")
+            }
+        }
+
+        private fun showReactionDialog(chatMessage: ChatMessage) {
+            val context = binding.root.context
+            val dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_reactions, null)
+            val layoutReactions = dialogView.findViewById<LinearLayout>(R.id.layoutReactions)
+
+            val builder = AlertDialog.Builder(context)
+                .setView(dialogView)
+            val alertDialog = builder.create()
+
+            val reactions = arrayOf("👍", "❤️", "😂", "😮", "😢", "\uD83D\uDE21")
+
+            for (reaction in reactions) {
+                val textView = TextView(context).apply {
+                    text = reaction
+                    textSize = 24f
+                    setPadding(16, 16, 16, 16)
+                    val params = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    )
+                    params.setMargins(16, 0, 16, 0)
+                    layoutParams = params
+
+                    setOnClickListener {
+                        reactionListener(chatMessage, reaction)
+                        alertDialog.dismiss()
+                    }
+                }
+                layoutReactions.addView(textView)
+            }
+            alertDialog.show()
         }
     }
 }

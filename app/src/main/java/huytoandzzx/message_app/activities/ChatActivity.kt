@@ -57,7 +57,19 @@ class ChatActivity : BaseActivity() {
         chatAdapter = ChatAdapter(
             chatMessages,
             receiverUser.image?.let { getBitmapFromEncodedString(it) },
-            preferenceManager.getString(Constants.KEY_USER_ID) ?: ""
+            preferenceManager.getString(Constants.KEY_USER_ID) ?: "",
+            reactionListener = { chatMessage, reaction ->
+                // Ví dụ: cập nhật trường reaction của tin nhắn lên Firestore
+                database.collection(Constants.KEY_COLLECTION_CHAT)
+                    .whereEqualTo(Constants.KEY_SENDER_ID, chatMessage.senderId)
+                    .whereEqualTo(Constants.KEY_TIMESTAMP, chatMessage.dateObject)
+                    .get()
+                    .addOnSuccessListener { querySnapshot ->
+                        for (document in querySnapshot.documents) {
+                            document.reference.update(Constants.KEY_REACTION, reaction)
+                        }
+                    }
+            }
         )
 
         binding.chatRecyclerView.adapter = chatAdapter
@@ -351,6 +363,7 @@ class ChatActivity : BaseActivity() {
             Constants.KEY_RECEIVER_ID to (receiverUser.id ?: ""),
             Constants.KEY_MESSAGE to messageText,
             Constants.KEY_TIMESTAMP to Date(),
+            Constants.KEY_REACTION to ""  // thêm trường reaction
         )
 
         database.collection(Constants.KEY_COLLECTION_CHAT).add(message)
@@ -366,6 +379,7 @@ class ChatActivity : BaseActivity() {
                 Constants.KEY_RECEIVER_IMAGE to (receiverUser.image ?: ""),
                 Constants.KEY_LAST_MESSAGE to messageText,
                 Constants.KEY_TIMESTAMP to Date(),
+                Constants.KEY_REACTION to ""  // nếu cần lưu reaction ở conversation
             )
             addConversion(conversion)
         }
@@ -433,18 +447,43 @@ class ChatActivity : BaseActivity() {
         if (value != null) {
             val count = chatMessages.size
             for (documentChange in value.documentChanges) {
-                if (documentChange.type == DocumentChange.Type.ADDED) {
-                    val chatMessage = ChatMessage().apply {
-                        senderId = documentChange.document.getString(Constants.KEY_SENDER_ID) ?: ""
-                        receiverId = documentChange.document.getString(Constants.KEY_RECEIVER_ID) ?: ""
-                        message = documentChange.document.getString(Constants.KEY_MESSAGE) ?: ""
-                        dateTime = getReadableDateTime(documentChange.document.getDate(Constants.KEY_TIMESTAMP) ?: Date())
-                        dateObject = documentChange.document.getDate(Constants.KEY_TIMESTAMP) ?: Date()
+                when (documentChange.type) {
+                    DocumentChange.Type.ADDED -> {
+                        val chatMessage = ChatMessage().apply {
+                            senderId = documentChange.document.getString(Constants.KEY_SENDER_ID) ?: ""
+                            receiverId = documentChange.document.getString(Constants.KEY_RECEIVER_ID) ?: ""
+                            message = documentChange.document.getString(Constants.KEY_MESSAGE) ?: ""
+                            dateTime = getReadableDateTime(documentChange.document.getDate(Constants.KEY_TIMESTAMP) ?: Date())
+                            dateObject = documentChange.document.getDate(Constants.KEY_TIMESTAMP) ?: Date()
+                            reaction = documentChange.document.getString(Constants.KEY_REACTION) ?: ""
+                        }
+                        chatMessages.add(chatMessage)
                     }
-                    chatMessages.add(chatMessage)
+                    DocumentChange.Type.MODIFIED -> {
+                        // Lấy thông tin cập nhật từ document
+                        val modifiedSender = documentChange.document.getString(Constants.KEY_SENDER_ID) ?: ""
+                        val modifiedReceiver = documentChange.document.getString(Constants.KEY_RECEIVER_ID) ?: ""
+                        val modifiedTimestamp = documentChange.document.getDate(Constants.KEY_TIMESTAMP) ?: Date()
+                        val newReaction = documentChange.document.getString(Constants.KEY_REACTION) ?: ""
+                        // Tìm tin nhắn cần update trong danh sách (so sánh sender, receiver và timestamp)
+                        for (i in chatMessages.indices) {
+                            val message = chatMessages[i]
+                            if (message.senderId == modifiedSender &&
+                                message.receiverId == modifiedReceiver &&
+                                message.dateObject == modifiedTimestamp) {
+                                message.reaction = newReaction
+                                chatAdapter.notifyItemChanged(i)
+                                break
+                            }
+                        }
+                    }
+                    else -> {
+                        // Có thể xử lý DocumentChange.Type.REMOVED nếu cần
+                    }
                 }
             }
 
+            // Sắp xếp lại danh sách tin nhắn theo thời gian
             chatMessages.sortBy { it.dateObject }
 
             if (count == 0) {
@@ -454,7 +493,6 @@ class ChatActivity : BaseActivity() {
                 binding.chatRecyclerView.smoothScrollToPosition(chatMessages.size - 1)
             }
             binding.chatRecyclerView.visibility = View.VISIBLE
-            //binding.progressBar.visibility = View.GONE
         }
         binding.progressBar.visibility = View.GONE
 

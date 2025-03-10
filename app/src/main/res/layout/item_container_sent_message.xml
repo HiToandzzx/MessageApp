@@ -21,15 +21,27 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintWidth_percent="0.8" />
 
+    <!-- TEXT REACTION: hiển thị reaction nếu có -->
+    <TextView
+        android:id="@+id/tvReaction"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/edit_text_border"
+        android:layout_marginTop="3dp"
+        android:padding="4dp"
+        app:layout_constraintStart_toStartOf="@id/tvMessage"
+        app:layout_constraintTop_toBottomOf="@id/tvMessage"
+        android:visibility="gone" />
+
     <!--DATETIME OF TEXT SENT-->
     <TextView
         android:id="@+id/textDateTime"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="10dp"
         android:textColor="#8d99ae"
         android:textSize="10sp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tvMessage" />
+        app:layout_constraintEnd_toEndOf="@id/tvMessage"
+        app:layout_constraintTop_toBottomOf="@id/tvReaction" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
