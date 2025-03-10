@@ -1,5 +1,6 @@
 package huytoandzzx.message_app.models
 
+import android.graphics.Bitmap
 import java.util.Date
 
 data class ChatMessage(
@@ -13,4 +14,6 @@ data class ChatMessage(
     var conversationId: String= "",
     var conversationName: String= "",
     var conversationImage: String= "",
+    var isImage: Boolean = false,
+    var imageBitmap: Bitmap? = null
 )

@@ -7,43 +7,61 @@
     android:layout_marginTop="8dp"
     android:padding="4dp">
 
-    <!-- IMAGE USER -->
+    <!-- USER PROFILE IMAGE -->
     <com.makeramen.roundedimageview.RoundedImageView
         android:id="@+id/imageProfile"
         android:layout_width="45dp"
         android:layout_height="45dp"
         android:scaleType="centerCrop"
-        app:layout_constraintBottom_toBottomOf="@+id/tvMessage"
+        app:riv_oval="true"
         app:layout_constraintStart_toStartOf="parent"
-        app:riv_oval="true" />
+        app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- TEXT RECEIVE -->
-    <TextView
-        android:id="@+id/tvMessage"
+    <!-- CONTAINER FOR MESSAGE & IMAGE -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/messageContainer"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:background="@drawable/bg_received_message"
         android:layout_marginHorizontal="5dp"
-        android:paddingVertical="12dp"
-        android:paddingHorizontal="8dp"
-        app:layout_constraintWidth_max="wrap"
-        android:textColor="@color/black"
-        android:textSize="16sp"
         app:layout_constraintStart_toEndOf="@id/imageProfile"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintWidth_percent="0.75" />
+        app:layout_constraintWidth_percent="0.75">
 
-    <!-- TEXT REACTION: hiển thị reaction nếu có -->
-    <TextView
-        android:id="@+id/tvReaction"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:background="@drawable/edit_text_border"
-        android:layout_marginTop="3dp"
-        android:padding="4dp"
-        app:layout_constraintEnd_toEndOf="@id/tvMessage"
-        app:layout_constraintTop_toBottomOf="@id/tvMessage"
-        android:visibility="gone" />
+        <!-- TEXT MESSAGE -->
+        <TextView
+            android:id="@+id/tvMessage"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_received_message"
+            android:paddingVertical="12dp"
+            android:paddingHorizontal="8dp"
+            android:textColor="@color/black"
+            android:textSize="16sp"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="@+id/messageContainer" />
+
+        <!-- SENT IMAGE -->
+        <ImageView
+            android:id="@+id/ivSentImage"
+            android:layout_width="200dp"
+            android:layout_height="200dp"
+            android:scaleType="centerCrop"
+            android:visibility="gone"
+            app:layout_constraintTop_toBottomOf="@id/tvMessage"
+            app:layout_constraintStart_toStartOf="parent" />
+
+        <!-- TEXT REACTION: hiển thị reaction nếu có -->
+        <TextView
+            android:id="@+id/tvReaction"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/edit_text_border"
+            android:layout_marginTop="3dp"
+            android:padding="4dp"
+            app:layout_constraintEnd_toEndOf="@id/tvMessage"
+            app:layout_constraintTop_toBottomOf="@id/tvMessage"
+            android:visibility="gone" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
     <!-- DATETIME OF TEXT RECEIVE -->
     <TextView
@@ -53,7 +71,7 @@
         android:layout_marginTop="10dp"
         android:textColor="#8d99ae"
         android:textSize="10sp"
-        app:layout_constraintStart_toStartOf="@id/tvMessage"
-        app:layout_constraintTop_toBottomOf="@id/tvReaction" />
+        app:layout_constraintStart_toStartOf="@id/messageContainer"
+        app:layout_constraintTop_toBottomOf="@id/messageContainer" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

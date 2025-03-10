@@ -3,10 +3,12 @@ package huytoandzzx.message_app.activities
 import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.app.Dialog
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.os.Bundle
+import android.provider.MediaStore
 import android.util.Base64
 import android.view.View
 import android.view.ViewGroup
@@ -29,6 +31,7 @@ import huytoandzzx.message_app.models.ChatMessage
 import huytoandzzx.message_app.models.User
 import huytoandzzx.message_app.utilities.Constants
 import huytoandzzx.message_app.utilities.PreferenceManager
+import java.io.ByteArrayOutputStream
 import java.util.Date
 
 @Suppress("DEPRECATION", "NAME_SHADOWING")
@@ -42,6 +45,10 @@ class ChatActivity : BaseActivity() {
     private var conversionId: String? = null
     private var isReceiverAvailable :Boolean = false
     private var currentThemeColor: Int = Color.parseColor("#20A090")
+
+    companion object {
+        private const val IMAGE_PICK_REQUEST_CODE = 1001
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -91,6 +98,61 @@ class ChatActivity : BaseActivity() {
         binding.imgMore.setOnClickListener {
             showOptionsDialog()
         }
+
+        binding.imgAttach.setOnClickListener {
+            val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
+            startActivityForResult(intent, IMAGE_PICK_REQUEST_CODE)
+        }
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == IMAGE_PICK_REQUEST_CODE && resultCode == RESULT_OK && data != null) {
+            val imageUri = data.data
+            try {
+                val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, imageUri)
+                val encodedImage = "IMG:" + encodeImage(bitmap)
+
+                // Tạo tin nhắn gửi hình ảnh. Ở đây, chúng ta lưu encodedImage vào trường message.
+                // Nếu bạn muốn phân biệt giữa tin nhắn văn bản và tin nhắn hình ảnh, có thể bổ sung thêm cờ hoặc kiểu tin nhắn.
+                val message = hashMapOf<String, Any>(
+                    Constants.KEY_SENDER_ID to (preferenceManager.getString(Constants.KEY_USER_ID) ?: ""),
+                    Constants.KEY_RECEIVER_ID to (receiverUser.id ?: ""),
+                    Constants.KEY_MESSAGE to encodedImage,
+                    Constants.KEY_TIMESTAMP to Date(),
+                    Constants.KEY_REACTION to ""
+                )
+
+                database.collection(Constants.KEY_COLLECTION_CHAT).add(message)
+                if (conversionId != null) {
+                    updateConversion("[Image]")
+                } else {
+                    val conversion = hashMapOf<String, Any>(
+                        Constants.KEY_SENDER_ID to (preferenceManager.getString(Constants.KEY_USER_ID) ?: ""),
+                        Constants.KEY_SENDER_NAME to (preferenceManager.getString(Constants.KEY_NAME) ?: ""),
+                        Constants.KEY_SENDER_IMAGE to (preferenceManager.getString(Constants.KEY_IMAGE) ?: ""),
+                        Constants.KEY_RECEIVER_ID to (receiverUser.id ?: ""),
+                        Constants.KEY_RECEIVER_NAME to (receiverUser.name ?: ""),
+                        Constants.KEY_RECEIVER_IMAGE to (receiverUser.image ?: ""),
+                        Constants.KEY_LAST_MESSAGE to "[Image]",
+                        Constants.KEY_TIMESTAMP to Date()
+                    )
+                    addConversion(conversion)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Toast.makeText(this, "Failed to process image", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun encodeImage(bitmap: Bitmap): String {
+        val baos = ByteArrayOutputStream()
+        // Nén ảnh sang JPEG với chất lượng 100 (bạn có thể điều chỉnh chất lượng nếu cần)
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos)
+        val bytes = baos.toByteArray()
+        return Base64.encodeToString(bytes, Base64.DEFAULT)
     }
 
     // OPEN DIALOG CHAT OPTIONS
@@ -457,29 +519,51 @@ class ChatActivity : BaseActivity() {
             for (documentChange in value.documentChanges) {
                 when (documentChange.type) {
                     DocumentChange.Type.ADDED -> {
+                        val rawMessage = documentChange.document.getString(Constants.KEY_MESSAGE) ?: ""
                         val chatMessage = ChatMessage().apply {
                             senderId = documentChange.document.getString(Constants.KEY_SENDER_ID) ?: ""
                             receiverId = documentChange.document.getString(Constants.KEY_RECEIVER_ID) ?: ""
-                            message = documentChange.document.getString(Constants.KEY_MESSAGE) ?: ""
                             dateTime = getReadableDateTime(documentChange.document.getDate(Constants.KEY_TIMESTAMP) ?: Date())
                             dateObject = documentChange.document.getDate(Constants.KEY_TIMESTAMP) ?: Date()
                             reaction = documentChange.document.getString(Constants.KEY_REACTION) ?: ""
                         }
+                        // Kiểm tra nếu tin nhắn là ảnh (có tiền tố "IMG:")
+                        if (rawMessage.startsWith("IMG:")) {
+                            chatMessage.isImage = true
+                            // Lấy phần chuỗi Base64 sau "IMG:" và giải mã thành Bitmap
+                            val base64Image = rawMessage.substring(4)
+                            chatMessage.imageBitmap = getBitmapFromEncodedString(base64Image)
+                            chatMessage.message = "" // hoặc "[Image]" nếu bạn muốn hiển thị text tạm thời
+                        } else {
+                            chatMessage.isImage = false
+                            chatMessage.message = rawMessage
+                        }
                         chatMessages.add(chatMessage)
                     }
                     DocumentChange.Type.MODIFIED -> {
-                        // Lấy thông tin cập nhật từ document
                         val modifiedSender = documentChange.document.getString(Constants.KEY_SENDER_ID) ?: ""
                         val modifiedReceiver = documentChange.document.getString(Constants.KEY_RECEIVER_ID) ?: ""
                         val modifiedTimestamp = documentChange.document.getDate(Constants.KEY_TIMESTAMP) ?: Date()
+                        val newRawMessage = documentChange.document.getString(Constants.KEY_MESSAGE) ?: ""
                         val newReaction = documentChange.document.getString(Constants.KEY_REACTION) ?: ""
-                        // Tìm tin nhắn cần update trong danh sách (so sánh sender, receiver và timestamp)
                         for (i in chatMessages.indices) {
                             val message = chatMessages[i]
                             if (message.senderId == modifiedSender &&
                                 message.receiverId == modifiedReceiver &&
                                 message.dateObject == modifiedTimestamp) {
+                                // Cập nhật reaction
                                 message.reaction = newReaction
+                                // Cập nhật nội dung tin nhắn
+                                if (newRawMessage.startsWith("IMG:")) {
+                                    message.isImage = true
+                                    val base64Image = newRawMessage.substring(4)
+                                    message.imageBitmap = getBitmapFromEncodedString(base64Image)
+                                    message.message = ""
+                                } else {
+                                    message.isImage = false
+                                    message.message = newRawMessage
+                                    message.imageBitmap = null
+                                }
                                 chatAdapter.notifyItemChanged(i)
                                 break
                             }

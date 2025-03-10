@@ -72,7 +72,16 @@ class ChatAdapter(
         RecyclerView.ViewHolder(binding.root) {
 
         fun setData(chatMessage: ChatMessage) {
-            binding.tvMessage.text = chatMessage.message
+            // Kiểm tra nếu tin nhắn là ảnh và có bitmap hợp lệ
+            if (chatMessage.isImage && chatMessage.imageBitmap != null) {
+                binding.ivSentImage.visibility = View.VISIBLE
+                binding.tvMessage.visibility = View.GONE
+                binding.ivSentImage.setImageBitmap(chatMessage.imageBitmap)
+            } else {
+                binding.ivSentImage.visibility = View.GONE
+                binding.tvMessage.visibility = View.VISIBLE
+                binding.tvMessage.text = chatMessage.message
+            }
             binding.textDateTime.text = chatMessage.dateTime
 
             // Áp dụng theme cho background của tin nhắn gửi
@@ -142,7 +151,16 @@ class ChatAdapter(
         RecyclerView.ViewHolder(binding.root) {
 
         fun setData(chatMessage: ChatMessage, profileImage: Bitmap?) {
-            binding.tvMessage.text = chatMessage.message
+            // Kiểm tra nếu tin nhắn là ảnh và có bitmap hợp lệ
+            if (chatMessage.isImage && chatMessage.imageBitmap != null) {
+                binding.ivSentImage.visibility = View.VISIBLE
+                binding.tvMessage.visibility = View.GONE
+                binding.ivSentImage.setImageBitmap(chatMessage.imageBitmap)
+            } else {
+                binding.ivSentImage.visibility = View.GONE
+                binding.tvMessage.visibility = View.VISIBLE
+                binding.tvMessage.text = chatMessage.message
+            }
             binding.textDateTime.text = chatMessage.dateTime
 
             // Hiển thị reaction nếu có
