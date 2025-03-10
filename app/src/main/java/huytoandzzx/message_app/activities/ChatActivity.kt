@@ -5,6 +5,7 @@ import android.app.AlertDialog
 import android.app.Dialog
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Color
 import android.os.Bundle
 import android.util.Base64
 import android.view.View
@@ -12,6 +13,7 @@ import android.view.ViewGroup
 import android.view.Window
 import android.widget.Button
 import android.widget.EditText
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
@@ -39,6 +41,7 @@ class ChatActivity : BaseActivity() {
     private lateinit var preferenceManager: PreferenceManager
     private var conversionId: String? = null
     private var isReceiverAvailable :Boolean = false
+    private var currentThemeColor: Int = Color.parseColor("#20A090")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -95,6 +98,11 @@ class ChatActivity : BaseActivity() {
     private fun showOptionsDialog() {
         // Inflate layout cho dialog
         val dialogView = layoutInflater.inflate(R.layout.dialog_options, null)
+
+        // Áp dụng màu theme cho container của dialog_options
+        val dialogContainer = dialogView.findViewById<LinearLayout>(R.id.dialogContainer)
+        dialogContainer.setBackgroundColor(currentThemeColor)
+
         val builder = AlertDialog.Builder(this)
         builder.setView(dialogView)
         val dialog = builder.create()
@@ -217,7 +225,6 @@ class ChatActivity : BaseActivity() {
         }
     }
 
-
     // XOÁ ĐOẠN CHAT
     private fun deleteChatMessages() {
         val senderId = preferenceManager.getString(Constants.KEY_USER_ID) ?: ""
@@ -314,6 +321,7 @@ class ChatActivity : BaseActivity() {
 
     // APPLY THEME
     private fun applyThemeColor(color: Int) {
+        currentThemeColor = color
         binding.root.setBackgroundColor(color)
         binding.headerBackground.setBackgroundColor(color)
         chatAdapter.updateThemeColor(color)
@@ -363,7 +371,7 @@ class ChatActivity : BaseActivity() {
             Constants.KEY_RECEIVER_ID to (receiverUser.id ?: ""),
             Constants.KEY_MESSAGE to messageText,
             Constants.KEY_TIMESTAMP to Date(),
-            Constants.KEY_REACTION to ""  // thêm trường reaction
+            Constants.KEY_REACTION to ""
         )
 
         database.collection(Constants.KEY_COLLECTION_CHAT).add(message)
@@ -379,7 +387,7 @@ class ChatActivity : BaseActivity() {
                 Constants.KEY_RECEIVER_IMAGE to (receiverUser.image ?: ""),
                 Constants.KEY_LAST_MESSAGE to messageText,
                 Constants.KEY_TIMESTAMP to Date(),
-                Constants.KEY_REACTION to ""  // nếu cần lưu reaction ở conversation
+                //Constants.KEY_REACTION to ""  // nếu cần lưu reaction ở conversation
             )
             addConversion(conversion)
         }
