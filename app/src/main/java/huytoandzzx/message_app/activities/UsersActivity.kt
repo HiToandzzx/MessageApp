@@ -1,7 +1,10 @@
 package huytoandzzx.message_app.activities
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.View
 import com.google.firebase.firestore.FirebaseFirestore
 import huytoandzzx.message_app.adapters.UsersAdapter
@@ -12,9 +15,11 @@ import huytoandzzx.message_app.utilities.Constants
 import huytoandzzx.message_app.utilities.PreferenceManager
 import java.util.Locale
 
-class UsersActivity : BaseActivity() , UserListener {
+class UsersActivity : BaseActivity(), UserListener {
     private lateinit var binding: ActivityUsersBinding
     private lateinit var preferenceManager: PreferenceManager
+    // Biến lưu danh sách user đã tải
+    private var usersList = ArrayList<User>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -23,6 +28,14 @@ class UsersActivity : BaseActivity() , UserListener {
         preferenceManager = PreferenceManager(applicationContext)
         setListeners()
         getUsers()
+        // Thêm TextWatcher cho tìm kiếm theo tên
+        binding.etSearch.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(s: Editable?) {}
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                filterUsers(s.toString())
+            }
+        })
     }
 
     private fun setListeners() {
@@ -31,7 +44,7 @@ class UsersActivity : BaseActivity() , UserListener {
         }
     }
 
-    private fun getUsers(){
+    private fun getUsers() {
         loading(true)
         val database = FirebaseFirestore.getInstance()
         database.collection(Constants.KEY_COLLECTION_USERS)
@@ -39,10 +52,8 @@ class UsersActivity : BaseActivity() , UserListener {
             .addOnCompleteListener { task ->
                 loading(false)
                 val currentUserId = preferenceManager.getString(Constants.KEY_USER_ID)
-
                 if (task.isSuccessful && task.result != null) {
-                    val users = ArrayList<User>()
-
+                    usersList.clear()
                     for (queryDocumentSnapshot in task.result!!) {
                         if (currentUserId == queryDocumentSnapshot.id) {
                             continue
@@ -54,15 +65,14 @@ class UsersActivity : BaseActivity() , UserListener {
                             token = queryDocumentSnapshot.getString(Constants.KEY_FCM_TOKEN)
                             id = queryDocumentSnapshot.id
                         }
-                        users.add(user)
+                        usersList.add(user)
                     }
-
-                    if (users.isNotEmpty()) {
-                        users.sortBy { it.name?.lowercase(Locale.ROOT) }
-
-                        val usersAdapter = UsersAdapter(users, this)
+                    if (usersList.isNotEmpty()) {
+                        usersList.sortBy { it.name?.lowercase(Locale.ROOT) }
+                        val usersAdapter = UsersAdapter(usersList, this)
                         binding.userRecyclerView.adapter = usersAdapter
                         binding.userRecyclerView.visibility = View.VISIBLE
+                        binding.tvErrorMessage.visibility = View.GONE
                     } else {
                         showErrorMessage()
                     }
@@ -72,8 +82,31 @@ class UsersActivity : BaseActivity() , UserListener {
             }
     }
 
-    private fun showErrorMessage(){
-        binding.tvErrorMessage.text = String.format("%s", "No user available")
+    // Hàm lọc danh sách người dùng theo tên
+    @SuppressLint("SetTextI18n")
+    private fun filterUsers(query: String) {
+        val filteredList = if (query.isEmpty()) {
+            usersList
+        } else {
+            usersList.filter { user ->
+                user.name?.contains(query, ignoreCase = true) == true
+            }
+        }
+        if (filteredList.isNotEmpty()) {
+            val usersAdapter = UsersAdapter(ArrayList(filteredList), this)
+            binding.userRecyclerView.adapter = usersAdapter
+            binding.userRecyclerView.visibility = View.VISIBLE
+            binding.tvErrorMessage.visibility = View.GONE
+        } else {
+            binding.userRecyclerView.visibility = View.GONE
+            binding.tvErrorMessage.text = "No user found"
+            binding.tvErrorMessage.visibility = View.VISIBLE
+        }
+    }
+
+    @SuppressLint("SetTextI18n")
+    private fun showErrorMessage() {
+        binding.tvErrorMessage.text = "No user available"
         binding.tvErrorMessage.visibility = View.VISIBLE
     }
 
