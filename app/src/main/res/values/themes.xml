@@ -1,8 +1,8 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
+<resources>
     <!-- Base application theme. -->
     <style name="Base.Theme.Message_app" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+        <!-- Đặt lại các màu bạn muốn thay thế. -->
+        <item name="colorPrimary">@android:color/black</item>
     </style>
 
     <style name="Theme.Message_app" parent="Base.Theme.Message_app" />
