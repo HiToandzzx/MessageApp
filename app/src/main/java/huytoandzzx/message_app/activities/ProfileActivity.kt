@@ -10,7 +10,6 @@ import android.util.Base64
 import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import com.bumptech.glide.Glide
 import com.google.firebase.firestore.FirebaseFirestore
 import huytoandzzx.message_app.databinding.ActivityProfileBinding
 import huytoandzzx.message_app.utilities.Constants
@@ -62,26 +61,9 @@ class ProfileActivity : AppCompatActivity() {
         binding.etEmailProfile.setText(preferenceManager.getString(Constants.KEY_EMAIL))
 
         val image = preferenceManager.getString(Constants.KEY_IMAGE)
-        // Lưu lại image hiện tại vào encodedImage để dùng khi update (nếu người dùng không chọn ảnh mới)
-        encodedImage = image.toString()
-        if (image != null) {
-            if (image.isNotEmpty()) {
-                if (image.startsWith("http") || image.startsWith("https")) {
-                    // Tài khoản Google lưu URL ảnh
-                    Glide.with(this)
-                        .load(image)
-                        .placeholder(com.google.android.material.R.drawable.mtrl_ic_error)
-                        .into(binding.myImage)
-                } else {
-                    // Giả sử image là chuỗi Base64 đã mã hóa
-                    val decodedBytes = Base64.decode(image, Base64.DEFAULT)
-                    val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
-                    binding.myImage.setImageBitmap(bitmap)
-                }
-            } else {
-                binding.myImage.setImageResource(android.R.color.darker_gray)
-            }
-        }
+        val decodedBytes = Base64.decode(image, Base64.DEFAULT)
+        val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+        binding.myImage.setImageBitmap(bitmap)
 
         userDocumentId = preferenceManager.getString(Constants.KEY_USER_ID)
     }

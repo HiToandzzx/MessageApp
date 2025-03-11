@@ -8,13 +8,13 @@ import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Base64
+import android.util.Log
 import android.view.View
 import android.view.animation.LinearInterpolator
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.view.GravityCompat
-import com.bumptech.glide.Glide
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.firebase.auth.FirebaseAuth
@@ -23,7 +23,7 @@ import com.google.firebase.firestore.EventListener
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.QuerySnapshot
-import com.google.firebase.messaging.FirebaseMessaging
+import com.onesignal.OneSignal
 import huytoandzzx.message_app.R
 import huytoandzzx.message_app.adapters.RecentConversationsAdapter
 import huytoandzzx.message_app.databinding.ActivityMainBinding
@@ -175,20 +175,9 @@ class MainActivity : BaseActivity(), ConversionListener {
 
         navUsername.text = preferenceManager.getString(Constants.KEY_NAME)
         val image = preferenceManager.getString(Constants.KEY_IMAGE)
-        if (!image.isNullOrEmpty()) {
-            if (image.startsWith("http") || image.startsWith("https")) {
-                Glide.with(this)
-                    .load(image)
-                    .placeholder(R.drawable.ic_default_profile)
-                    .into(navImage)
-            } else {
-                val bytes = Base64.decode(image, Base64.DEFAULT)
-                val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-                navImage.setImageBitmap(bitmap)
-            }
-        } else {
-            navImage.setImageResource(R.drawable.ic_default_profile)
-        }
+        val bytes = Base64.decode(image, Base64.DEFAULT)
+        val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+        navImage.setImageBitmap(bitmap)
     }
 
     private fun listenConversations() {
@@ -202,20 +191,26 @@ class MainActivity : BaseActivity(), ConversionListener {
     }
 
     // Lấy token khi SignIn
+    // Hàm lấy OneSignal Player ID (định dạng UUID) và cập nhật
     private fun getToken() {
-        FirebaseMessaging.getInstance().token
-            .addOnSuccessListener { token -> updateToken(token) }
+        // Lấy oneSignalPlayerId từ OneSignal
+        val oneSignalPlayerId = OneSignal.User.pushSubscription.id
+        if (oneSignalPlayerId.isNotEmpty()) {
+            updateToken(oneSignalPlayerId)
+        } else {
+            Log.e("OneSignal", "OneSignal Player ID is null or empty")
+        }
     }
 
-    // UPDATE TOKEN
+    // Hàm cập nhật OneSignal Player ID lên Firestore
     private fun updateToken(token: String) {
-        preferenceManager.putString(Constants.KEY_FCM_TOKEN, token)
-        val database = FirebaseFirestore.getInstance()
+        // Lưu vào Preference
+        preferenceManager.putString(Constants.KEY_ONESIGNAL_PLAYER_ID, token)
         val documentReference = database.collection(Constants.KEY_COLLECTION_USERS)
             .document(preferenceManager.getString(Constants.KEY_USER_ID) ?: "")
 
-        documentReference.update(Constants.KEY_FCM_TOKEN, token)
-            .addOnFailureListener { showToast("Unable to update token") }
+        documentReference.update(Constants.KEY_ONESIGNAL_PLAYER_ID, token)
+            .addOnFailureListener { showToast("Unable to update OneSignal Player ID") }
     }
 
     // SIGN OUT
@@ -226,7 +221,7 @@ class MainActivity : BaseActivity(), ConversionListener {
             .document(preferenceManager.getString(Constants.KEY_USER_ID)!!)
 
         val updates = hashMapOf<String, Any>(
-            Constants.KEY_FCM_TOKEN to FieldValue.delete()
+            Constants.KEY_ONESIGNAL_PLAYER_ID to FieldValue.delete()
         )
 
         documentReference.update(updates)

@@ -60,7 +60,8 @@ dependencies {
     implementation("com.google.firebase:firebase-messaging:24.1.0")
     implementation("com.google.firebase:firebase-firestore:25.1.2")
     implementation("com.google.firebase:firebase-auth-ktx")
-    implementation("com.github.bumptech.glide:glide:4.12.0")
+
+    implementation("com.onesignal:OneSignal:[5.0.0, 5.1.99]")
 
     // MultiDex
     implementation("androidx.multidex:multidex:2.0.1")

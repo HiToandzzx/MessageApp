@@ -8,24 +8,6 @@
     android:background="@color/primary"
     android:gravity="center">
 
-    <LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:layout_gravity="center_horizontal"
-        android:gravity="center_horizontal"
-        android:layout_marginEnd="30dp">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Action:"
-            android:textSize="20dp"
-            android:textStyle="bold"
-            android:textColor="@android:color/white"
-            android:layout_marginTop="20dp"/>
-    </LinearLayout>
-
     <!--NICKNAME-->
     <LinearLayout
         android:layout_width="wrap_content"
@@ -37,8 +19,8 @@
 
         <ImageView
             android:id="@+id/dialogNickName"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
             android:src="@drawable/ic_nickname"/>
 
         <TextView
@@ -60,14 +42,45 @@
 
         <ImageView
             android:id="@+id/dialogTheme"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
             android:src="@drawable/ic_theme"/>
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Theme"
+            android:textColor="@android:color/white"
+            android:layout_marginTop="4dp"/>
+    </LinearLayout>
+
+    <!--THEME-->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_gravity="center_horizontal"
+        android:gravity="center_horizontal"
+        android:layout_marginEnd="20dp">
+
+        <ImageView
+            android:id="@+id/dialogNotificationOn"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:visibility="visible"
+            android:src="@drawable/notifications_on"/>
+
+        <ImageView
+            android:id="@+id/dialogNotificationOff"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:visibility="gone"
+            android:src="@drawable/notification_stop"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Notification"
             android:textColor="@android:color/white"
             android:layout_marginTop="4dp"/>
     </LinearLayout>
@@ -81,8 +94,8 @@
 
         <ImageView
             android:id="@+id/dialogDelete"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
             android:src="@drawable/ic_delete"/>
 
         <TextView

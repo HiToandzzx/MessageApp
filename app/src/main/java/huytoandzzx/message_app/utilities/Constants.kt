@@ -11,7 +11,9 @@ object Constants {
     const val KEY_USER_ID = "userId"
     const val KEY_IMAGE = "image"
 
-    const val KEY_FCM_TOKEN = "fcmToken"
+    const val KEY_ONESIGNAL_PLAYER_ID = "onesignalPlayerId"
+    const val ONESIGNAL_REST_API_KEY = "os_v2_app_4f257jmrsrdm7m5ckswkwxut2xxy2pi5dcfe2y4um2cuviioys5fkrr37buprqy4hxxrfbjc7yh4m2tuf3nvnodwprqajgfgpqn6k2a"
+    const val ONESIGNAL_APP_ID = "e175dfa5-9194-46cf-b3a2-54acab5e93d5"
 
     const val KEY_USER = "user"
 

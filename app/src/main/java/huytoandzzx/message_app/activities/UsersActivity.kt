@@ -62,7 +62,7 @@ class UsersActivity : BaseActivity(), UserListener {
                             name = queryDocumentSnapshot.getString(Constants.KEY_NAME)
                             email = queryDocumentSnapshot.getString(Constants.KEY_EMAIL)
                             image = queryDocumentSnapshot.getString(Constants.KEY_IMAGE)
-                            token = queryDocumentSnapshot.getString(Constants.KEY_FCM_TOKEN)
+                            token = queryDocumentSnapshot.getString(Constants.KEY_ONESIGNAL_PLAYER_ID)
                             id = queryDocumentSnapshot.id
                         }
                         usersList.add(user)

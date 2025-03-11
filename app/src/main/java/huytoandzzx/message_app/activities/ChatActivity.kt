@@ -29,6 +29,7 @@ import huytoandzzx.message_app.adapters.ChatAdapter
 import huytoandzzx.message_app.databinding.ActivityChatBinding
 import huytoandzzx.message_app.models.ChatMessage
 import huytoandzzx.message_app.models.User
+import huytoandzzx.message_app.services.OneSignalNotificationService
 import huytoandzzx.message_app.utilities.Constants
 import huytoandzzx.message_app.utilities.PreferenceManager
 import java.io.ByteArrayOutputStream
@@ -105,6 +106,140 @@ class ChatActivity : BaseActivity() {
         }
     }
 
+    @SuppressLint("NotifyDataSetChanged")
+    private val eventListener = EventListener<QuerySnapshot> { value, error ->
+        if (error != null) {
+            return@EventListener
+        }
+
+        if (value != null) {
+            val count = chatMessages.size
+            for (documentChange in value.documentChanges) {
+                when (documentChange.type) {
+                    DocumentChange.Type.ADDED -> {
+                        val rawMessage = documentChange.document.getString(Constants.KEY_MESSAGE) ?: ""
+                        val chatMessage = ChatMessage().apply {
+                            senderId = documentChange.document.getString(Constants.KEY_SENDER_ID) ?: ""
+                            receiverId = documentChange.document.getString(Constants.KEY_RECEIVER_ID) ?: ""
+                            dateTime = getReadableDateTime(documentChange.document.getDate(Constants.KEY_TIMESTAMP) ?: Date())
+                            dateObject = documentChange.document.getDate(Constants.KEY_TIMESTAMP) ?: Date()
+                            reaction = documentChange.document.getString(Constants.KEY_REACTION) ?: ""
+                        }
+                        // Kiểm tra nếu tin nhắn là ảnh (có tiền tố "IMG:")
+                        if (rawMessage.startsWith("IMG:")) {
+                            chatMessage.isImage = true
+                            // Lấy phần chuỗi Base64 sau "IMG:" và giải mã thành Bitmap
+                            val base64Image = rawMessage.substring(4)
+                            chatMessage.imageBitmap = getBitmapFromEncodedString(base64Image)
+                            chatMessage.message = ""
+                        } else {
+                            chatMessage.isImage = false
+                            chatMessage.message = rawMessage
+                        }
+                        chatMessages.add(chatMessage)
+                    }
+                    DocumentChange.Type.MODIFIED -> {
+                        val modifiedSender = documentChange.document.getString(Constants.KEY_SENDER_ID) ?: ""
+                        val modifiedReceiver = documentChange.document.getString(Constants.KEY_RECEIVER_ID) ?: ""
+                        val modifiedTimestamp = documentChange.document.getDate(Constants.KEY_TIMESTAMP) ?: Date()
+                        val newRawMessage = documentChange.document.getString(Constants.KEY_MESSAGE) ?: ""
+                        val newReaction = documentChange.document.getString(Constants.KEY_REACTION) ?: ""
+                        for (i in chatMessages.indices) {
+                            val message = chatMessages[i]
+                            if (message.senderId == modifiedSender &&
+                                message.receiverId == modifiedReceiver &&
+                                message.dateObject == modifiedTimestamp) {
+                                // Cập nhật reaction
+                                message.reaction = newReaction
+                                // Cập nhật nội dung tin nhắn
+                                if (newRawMessage.startsWith("IMG:")) {
+                                    message.isImage = true
+                                    val base64Image = newRawMessage.substring(4)
+                                    message.imageBitmap = getBitmapFromEncodedString(base64Image)
+                                    message.message = ""
+                                } else {
+                                    message.isImage = false
+                                    message.message = newRawMessage
+                                    message.imageBitmap = null
+                                }
+                                chatAdapter.notifyItemChanged(i)
+                                break
+                            }
+                        }
+                    }
+                    else -> {
+                    }
+                }
+            }
+
+            // Sắp xếp lại danh sách tin nhắn theo thời gian
+            chatMessages.sortBy { it.dateObject }
+
+            if (count == 0) {
+                chatAdapter.notifyDataSetChanged()
+            } else {
+                chatAdapter.notifyItemRangeInserted(count, chatMessages.size - count)
+                binding.chatRecyclerView.smoothScrollToPosition(chatMessages.size - 1)
+            }
+            binding.chatRecyclerView.visibility = View.VISIBLE
+        }
+        binding.progressBar.visibility = View.GONE
+
+        if (conversionId == null){
+            checkForConversion()
+        }
+    }
+
+    private fun sendMessage() {
+        val messageText = binding.inputMessage.text.toString()
+        val message = hashMapOf<String, Any>(
+            Constants.KEY_SENDER_ID to (preferenceManager.getString(Constants.KEY_USER_ID) ?: ""),
+            Constants.KEY_RECEIVER_ID to (receiverUser.id ?: ""),
+            Constants.KEY_MESSAGE to messageText,
+            Constants.KEY_TIMESTAMP to Date(),
+            Constants.KEY_REACTION to ""
+        )
+
+        database.collection(Constants.KEY_COLLECTION_CHAT).add(message)
+        if (conversionId != null) {
+            updateConversion(messageText)
+        } else {
+            val conversion = hashMapOf<String, Any>(
+                Constants.KEY_SENDER_ID to (preferenceManager.getString(Constants.KEY_USER_ID) ?: ""),
+                Constants.KEY_SENDER_NAME to (preferenceManager.getString(Constants.KEY_NAME) ?: ""),
+                Constants.KEY_SENDER_IMAGE to (preferenceManager.getString(Constants.KEY_IMAGE) ?: ""),
+                Constants.KEY_RECEIVER_ID to (receiverUser.id ?: ""),
+                Constants.KEY_RECEIVER_NAME to (receiverUser.name ?: ""),
+                Constants.KEY_RECEIVER_IMAGE to (receiverUser.image ?: ""),
+                Constants.KEY_LAST_MESSAGE to messageText,
+                Constants.KEY_TIMESTAMP to Date(),
+            )
+            addConversion(conversion)
+        }
+
+        // Gửi push notification nếu người nhận không online
+        if (!isReceiverAvailable) {
+            sendPushNotification(messageText)
+        }
+
+        binding.inputMessage.setText("")
+    }
+
+    // Hàm gửi push notification qua OneSignal REST API
+    private fun sendPushNotification(messageText: String) {
+        val playerId = receiverUser.token ?: ""
+
+        // Gọi phương thức của service
+        OneSignalNotificationService.sendPushNotification(
+            restApiKey = Constants.ONESIGNAL_REST_API_KEY,
+            appId = Constants.ONESIGNAL_APP_ID,
+            playerId = playerId,
+            messageText = messageText,
+            senderId = preferenceManager.getString(Constants.KEY_USER_ID),
+            senderName = preferenceManager.getString(Constants.KEY_NAME)
+        )
+    }
+
     @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
@@ -114,8 +249,6 @@ class ChatActivity : BaseActivity() {
                 val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, imageUri)
                 val encodedImage = "IMG:" + encodeImage(bitmap)
 
-                // Tạo tin nhắn gửi hình ảnh. Ở đây, chúng ta lưu encodedImage vào trường message.
-                // Nếu bạn muốn phân biệt giữa tin nhắn văn bản và tin nhắn hình ảnh, có thể bổ sung thêm cờ hoặc kiểu tin nhắn.
                 val message = hashMapOf<String, Any>(
                     Constants.KEY_SENDER_ID to (preferenceManager.getString(Constants.KEY_USER_ID) ?: ""),
                     Constants.KEY_RECEIVER_ID to (receiverUser.id ?: ""),
@@ -145,14 +278,6 @@ class ChatActivity : BaseActivity() {
                 Toast.makeText(this, "Failed to process image", Toast.LENGTH_SHORT).show()
             }
         }
-    }
-
-    private fun encodeImage(bitmap: Bitmap): String {
-        val baos = ByteArrayOutputStream()
-        // Nén ảnh sang JPEG với chất lượng 100 (bạn có thể điều chỉnh chất lượng nếu cần)
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos)
-        val bytes = baos.toByteArray()
-        return Base64.encodeToString(bytes, Base64.DEFAULT)
     }
 
     // OPEN DIALOG CHAT OPTIONS
@@ -287,47 +412,6 @@ class ChatActivity : BaseActivity() {
         }
     }
 
-    // XOÁ ĐOẠN CHAT
-    private fun deleteChatMessages() {
-        val senderId = preferenceManager.getString(Constants.KEY_USER_ID) ?: ""
-        val receiverId = receiverUser.id ?: ""
-
-        // Lấy tin nhắn với sender là người dùng và receiver là receiverUser
-        database.collection(Constants.KEY_COLLECTION_CHAT)
-            .whereEqualTo(Constants.KEY_SENDER_ID, senderId)
-            .whereEqualTo(Constants.KEY_RECEIVER_ID, receiverId)
-            .get()
-            .addOnSuccessListener { querySnapshot1 ->
-                val batch = database.batch()
-                for (document in querySnapshot1.documents) {
-                    batch.delete(document.reference)
-                }
-                // Lấy tin nhắn với sender là receiverUser và receiver là người dùng
-                database.collection(Constants.KEY_COLLECTION_CHAT)
-                    .whereEqualTo(Constants.KEY_SENDER_ID, receiverId)
-                    .whereEqualTo(Constants.KEY_RECEIVER_ID, senderId)
-                    .get()
-                    .addOnSuccessListener { querySnapshot2 ->
-                        for (document in querySnapshot2.documents) {
-                            batch.delete(document.reference)
-                        }
-                        // Commit batch xoá tất cả tin nhắn
-                        batch.commit().addOnSuccessListener {
-                            Toast.makeText(this, "Delete chat successfully", Toast.LENGTH_SHORT).show()
-                            finish()
-                        }.addOnFailureListener {
-                            Toast.makeText(this, "Delete chat failed", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                    .addOnFailureListener {
-                        Toast.makeText(this, "ERROR", Toast.LENGTH_SHORT).show()
-                    }
-            }
-            .addOnFailureListener {
-                Toast.makeText(this, "ERROR", Toast.LENGTH_SHORT).show()
-            }
-    }
-
     // HIỂN THỊ DANH SÁCH THEME
     @SuppressLint("SetTextI18n")
     private fun showThemeSelectionDialog() {
@@ -410,6 +494,47 @@ class ChatActivity : BaseActivity() {
         }
     }
 
+    // XOÁ ĐOẠN CHAT
+    private fun deleteChatMessages() {
+        val senderId = preferenceManager.getString(Constants.KEY_USER_ID) ?: ""
+        val receiverId = receiverUser.id ?: ""
+
+        // Lấy tin nhắn với sender là người dùng và receiver là receiverUser
+        database.collection(Constants.KEY_COLLECTION_CHAT)
+            .whereEqualTo(Constants.KEY_SENDER_ID, senderId)
+            .whereEqualTo(Constants.KEY_RECEIVER_ID, receiverId)
+            .get()
+            .addOnSuccessListener { querySnapshot1 ->
+                val batch = database.batch()
+                for (document in querySnapshot1.documents) {
+                    batch.delete(document.reference)
+                }
+                // Lấy tin nhắn với sender là receiverUser và receiver là người dùng
+                database.collection(Constants.KEY_COLLECTION_CHAT)
+                    .whereEqualTo(Constants.KEY_SENDER_ID, receiverId)
+                    .whereEqualTo(Constants.KEY_RECEIVER_ID, senderId)
+                    .get()
+                    .addOnSuccessListener { querySnapshot2 ->
+                        for (document in querySnapshot2.documents) {
+                            batch.delete(document.reference)
+                        }
+                        // Commit batch xoá tất cả tin nhắn
+                        batch.commit().addOnSuccessListener {
+                            Toast.makeText(this, "Delete chat successfully", Toast.LENGTH_SHORT).show()
+                            finish()
+                        }.addOnFailureListener {
+                            Toast.makeText(this, "Delete chat failed", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                    .addOnFailureListener {
+                        Toast.makeText(this, "ERROR", Toast.LENGTH_SHORT).show()
+                    }
+            }
+            .addOnFailureListener {
+                Toast.makeText(this, "ERROR", Toast.LENGTH_SHORT).show()
+            }
+    }
+
     private fun loadThemeColor() {
         conversionId?.let { convId ->
             database.collection(Constants.KEY_COLLECTION_CONVERSATIONS)
@@ -424,36 +549,6 @@ class ChatActivity : BaseActivity() {
                     }
                 }
         }
-    }
-
-    private fun sendMessage() {
-        val messageText = binding.inputMessage.text.toString()
-        val message = hashMapOf<String, Any>(
-            Constants.KEY_SENDER_ID to (preferenceManager.getString(Constants.KEY_USER_ID) ?: ""),
-            Constants.KEY_RECEIVER_ID to (receiverUser.id ?: ""),
-            Constants.KEY_MESSAGE to messageText,
-            Constants.KEY_TIMESTAMP to Date(),
-            Constants.KEY_REACTION to ""
-        )
-
-        database.collection(Constants.KEY_COLLECTION_CHAT).add(message)
-        if (conversionId != null) {
-            updateConversion(messageText)
-        } else {
-            val conversion = hashMapOf<String, Any>(
-                Constants.KEY_SENDER_ID to (preferenceManager.getString(Constants.KEY_USER_ID) ?: ""),
-                Constants.KEY_SENDER_NAME to (preferenceManager.getString(Constants.KEY_NAME) ?: ""),
-                Constants.KEY_SENDER_IMAGE to (preferenceManager.getString(Constants.KEY_IMAGE) ?: ""),
-                Constants.KEY_RECEIVER_ID to (receiverUser.id ?: ""),
-                Constants.KEY_RECEIVER_NAME to (receiverUser.name ?: ""),
-                Constants.KEY_RECEIVER_IMAGE to (receiverUser.image ?: ""),
-                Constants.KEY_LAST_MESSAGE to messageText,
-                Constants.KEY_TIMESTAMP to Date(),
-                //Constants.KEY_REACTION to ""  // nếu cần lưu reaction ở conversation
-            )
-            addConversion(conversion)
-        }
-        binding.inputMessage.setText("")
     }
 
     private fun addConversion(conversion: HashMap<String, Any>) {
@@ -484,15 +579,14 @@ class ChatActivity : BaseActivity() {
                 value?.let {
                     val availability = it.getLong(Constants.KEY_AVAILABILITY)?.toInt()
                     isReceiverAvailable = (availability == 1)
+                    receiverUser.token = it.getString(Constants.KEY_ONESIGNAL_PLAYER_ID)
                 }
-                receiverUser.token = value?.getString(Constants.KEY_FCM_TOKEN)
 
                 if (isReceiverAvailable) {
                     binding.textAvailability.visibility = View.VISIBLE
                 } else {
                     binding.textAvailability.visibility = View.GONE
                 }
-                receiverUser.token = value?.getString(Constants.KEY_FCM_TOKEN)
             }
     }
 
@@ -506,96 +600,6 @@ class ChatActivity : BaseActivity() {
             .whereEqualTo(Constants.KEY_SENDER_ID, receiverUser.id)
             .whereEqualTo(Constants.KEY_RECEIVER_ID, preferenceManager.getString(Constants.KEY_USER_ID))
             .addSnapshotListener(eventListener)
-    }
-
-    @SuppressLint("NotifyDataSetChanged")
-    private val eventListener = EventListener<QuerySnapshot> { value, error ->
-        if (error != null) {
-            return@EventListener
-        }
-
-        if (value != null) {
-            val count = chatMessages.size
-            for (documentChange in value.documentChanges) {
-                when (documentChange.type) {
-                    DocumentChange.Type.ADDED -> {
-                        val rawMessage = documentChange.document.getString(Constants.KEY_MESSAGE) ?: ""
-                        val chatMessage = ChatMessage().apply {
-                            senderId = documentChange.document.getString(Constants.KEY_SENDER_ID) ?: ""
-                            receiverId = documentChange.document.getString(Constants.KEY_RECEIVER_ID) ?: ""
-                            dateTime = getReadableDateTime(documentChange.document.getDate(Constants.KEY_TIMESTAMP) ?: Date())
-                            dateObject = documentChange.document.getDate(Constants.KEY_TIMESTAMP) ?: Date()
-                            reaction = documentChange.document.getString(Constants.KEY_REACTION) ?: ""
-                        }
-                        // Kiểm tra nếu tin nhắn là ảnh (có tiền tố "IMG:")
-                        if (rawMessage.startsWith("IMG:")) {
-                            chatMessage.isImage = true
-                            // Lấy phần chuỗi Base64 sau "IMG:" và giải mã thành Bitmap
-                            val base64Image = rawMessage.substring(4)
-                            chatMessage.imageBitmap = getBitmapFromEncodedString(base64Image)
-                            chatMessage.message = "" // hoặc "[Image]" nếu bạn muốn hiển thị text tạm thời
-                        } else {
-                            chatMessage.isImage = false
-                            chatMessage.message = rawMessage
-                        }
-                        chatMessages.add(chatMessage)
-                    }
-                    DocumentChange.Type.MODIFIED -> {
-                        val modifiedSender = documentChange.document.getString(Constants.KEY_SENDER_ID) ?: ""
-                        val modifiedReceiver = documentChange.document.getString(Constants.KEY_RECEIVER_ID) ?: ""
-                        val modifiedTimestamp = documentChange.document.getDate(Constants.KEY_TIMESTAMP) ?: Date()
-                        val newRawMessage = documentChange.document.getString(Constants.KEY_MESSAGE) ?: ""
-                        val newReaction = documentChange.document.getString(Constants.KEY_REACTION) ?: ""
-                        for (i in chatMessages.indices) {
-                            val message = chatMessages[i]
-                            if (message.senderId == modifiedSender &&
-                                message.receiverId == modifiedReceiver &&
-                                message.dateObject == modifiedTimestamp) {
-                                // Cập nhật reaction
-                                message.reaction = newReaction
-                                // Cập nhật nội dung tin nhắn
-                                if (newRawMessage.startsWith("IMG:")) {
-                                    message.isImage = true
-                                    val base64Image = newRawMessage.substring(4)
-                                    message.imageBitmap = getBitmapFromEncodedString(base64Image)
-                                    message.message = ""
-                                } else {
-                                    message.isImage = false
-                                    message.message = newRawMessage
-                                    message.imageBitmap = null
-                                }
-                                chatAdapter.notifyItemChanged(i)
-                                break
-                            }
-                        }
-                    }
-                    else -> {
-                        // Có thể xử lý DocumentChange.Type.REMOVED nếu cần
-                    }
-                }
-            }
-
-            // Sắp xếp lại danh sách tin nhắn theo thời gian
-            chatMessages.sortBy { it.dateObject }
-
-            if (count == 0) {
-                chatAdapter.notifyDataSetChanged()
-            } else {
-                chatAdapter.notifyItemRangeInserted(count, chatMessages.size - count)
-                binding.chatRecyclerView.smoothScrollToPosition(chatMessages.size - 1)
-            }
-            binding.chatRecyclerView.visibility = View.VISIBLE
-        }
-        binding.progressBar.visibility = View.GONE
-
-        if (conversionId == null){
-            checkForConversion()
-        }
-    }
-
-    private fun getBitmapFromEncodedString(encodedImage: String): Bitmap {
-        val bytes = Base64.decode(encodedImage, Base64.DEFAULT)
-        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
     }
 
     private fun loadReceiverDetails() {
@@ -667,6 +671,19 @@ class ChatActivity : BaseActivity() {
     private fun getReadableDateTime(date: Date): String {
         val dateFormat = java.text.SimpleDateFormat("hh:mm a", java.util.Locale.getDefault())
         return dateFormat.format(date)
+    }
+
+    private fun encodeImage(bitmap: Bitmap): String {
+        val baos = ByteArrayOutputStream()
+        // Nén ảnh sang JPEG với chất lượng 100
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos)
+        val bytes = baos.toByteArray()
+        return Base64.encodeToString(bytes, Base64.DEFAULT)
+    }
+
+    private fun getBitmapFromEncodedString(encodedImage: String): Bitmap {
+        val bytes = Base64.decode(encodedImage, Base64.DEFAULT)
+        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
     }
 
     override fun onResume() {
