@@ -43,19 +43,16 @@ class RecentConversationsAdapter(
             binding.tvUsername.text = chatMessage.conversationName
             binding.tvRecentMessage.text = chatMessage.message
 
+            // Ẩn/hiện trạng thái online
             binding.textAvailability.visibility = View.GONE
-
-            FirebaseFirestore.getInstance().collection(Constants.KEY_COLLECTION_USERS)
+            val userRef = FirebaseFirestore.getInstance().collection(Constants.KEY_COLLECTION_USERS)
                 .document(chatMessage.conversationId)
-                .get()
-                .addOnSuccessListener { document ->
-                    if (document != null && document.exists()) {
-                        val availability = document.getLong(Constants.KEY_AVAILABILITY)
-                        if (availability?.toInt() == 1) {
-                            binding.textAvailability.visibility = View.VISIBLE
-                        }
-                    }
+            userRef.addSnapshotListener { document, _ ->
+                if (document != null && document.exists()) {
+                    val availability = document.getLong(Constants.KEY_AVAILABILITY)
+                    binding.textAvailability.visibility = if (availability?.toInt() == 1) View.VISIBLE else View.GONE
                 }
+            }
 
             binding.root.setOnClickListener {
                 val user = User().apply {
@@ -79,3 +76,4 @@ class RecentConversationsAdapter(
         notifyDataSetChanged()
     }
 }
+

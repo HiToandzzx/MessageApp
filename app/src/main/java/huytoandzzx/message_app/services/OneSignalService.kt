@@ -9,7 +9,7 @@ import com.onesignal.OneSignal
 import com.onesignal.debug.LogLevel
 import huytoandzzx.message_app.utilities.Constants
 
-class OnSignalService : Application() {
+class OneSignalService : Application() {
     private val appId = Constants.ONESIGNAL_APP_ID
     override fun onCreate() {
         super.onCreate()

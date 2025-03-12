@@ -32,7 +32,7 @@ object OneSignalNotificationService {
         val jsonBody = JSONObject().apply {
             put("app_id", appId)
             put("include_player_ids", JSONArray().put(playerId))
-            put("headings", JSONObject().put("en", "New Message"))
+            put("headings", JSONObject().put("en", "New Message from $senderName"))
             put("contents", JSONObject().put("en", messageText))
             // Optional: thêm dữ liệu bổ sung nếu cần
             put("data", JSONObject().apply {
