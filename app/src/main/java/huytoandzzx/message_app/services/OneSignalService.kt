@@ -20,6 +20,9 @@ class OneSignalService : Application() {
         // OneSignal Initialization
         OneSignal.initWithContext(this, appId)
 
+        // Xử lý khi nhấn vào thông báo
+        OneSignal.Notifications.addClickListener(NotificationConversionHandler(this))
+
         // requestPermission will show the native Android notification permission prompt.
         // NOTE: It's recommended to use a OneSignal In-App Message to prompt instead.
         CoroutineScope(Dispatchers.IO).launch {
@@ -27,3 +30,4 @@ class OneSignalService : Application() {
         }
     }
 }
+

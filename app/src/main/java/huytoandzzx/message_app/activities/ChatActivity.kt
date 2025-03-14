@@ -14,7 +14,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.Window
 import android.widget.Button
-import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -35,7 +34,7 @@ import huytoandzzx.message_app.utilities.PreferenceManager
 import java.io.ByteArrayOutputStream
 import java.util.Date
 
-@Suppress("DEPRECATION", "NAME_SHADOWING")
+@Suppress("DEPRECATION")
 class ChatActivity : BaseActivity() {
     private lateinit var binding: ActivityChatBinding
     private lateinit var receiverUser: User
@@ -217,9 +216,9 @@ class ChatActivity : BaseActivity() {
             addConversion(conversion)
         }
 
-        // Gửi push notification nếu người nhận không online
+        // Push background notification
         if (!isReceiverAvailable) {
-            sendPushNotification(messageText)
+            sendPushNotification(if (messageText.startsWith("IMG:")) "[Image]" else messageText)
         }
 
         binding.inputMessage.setText("")
@@ -235,8 +234,9 @@ class ChatActivity : BaseActivity() {
             appId = Constants.ONESIGNAL_APP_ID,
             playerId = playerId,
             messageText = messageText,
-            senderId = preferenceManager.getString(Constants.KEY_USER_ID),
-            senderName = preferenceManager.getString(Constants.KEY_NAME)
+            conversationId = preferenceManager.getString(Constants.KEY_USER_ID),
+            conversationImage = preferenceManager.getString(Constants.KEY_IMAGE),
+            conversationName = preferenceManager.getString(Constants.KEY_NAME),
         )
     }
 
@@ -273,6 +273,12 @@ class ChatActivity : BaseActivity() {
                     )
                     addConversion(conversion)
                 }
+
+                // Push background notification
+                if (!isReceiverAvailable) {
+                    sendPushNotification("[Image]")
+                }
+
             } catch (e: Exception) {
                 e.printStackTrace()
                 Toast.makeText(this, "Failed to process image", Toast.LENGTH_SHORT).show()
@@ -301,78 +307,8 @@ class ChatActivity : BaseActivity() {
         )
 
         // Lấy tham chiếu tới các view trong dialog
-        val dialogNickName = dialogView.findViewById<androidx.appcompat.widget.AppCompatImageView>(R.id.dialogNickName)
         val dialogTheme = dialogView.findViewById<androidx.appcompat.widget.AppCompatImageView>(R.id.dialogTheme)
         val dialogDelete = dialogView.findViewById<androidx.appcompat.widget.AppCompatImageView>(R.id.dialogDelete)
-
-        // Xử lý sự kiện click cho nút NickName: hiển thị dialog thay đổi Nickname
-        dialogNickName.setOnClickListener {
-            val builder = AlertDialog.Builder(this)
-            builder.setTitle("Change Nicknames")
-
-            // Inflate layout tùy chỉnh cho dialog
-            val dialogView = layoutInflater.inflate(R.layout.dialog_change_nicknames, null)
-            // Nếu cần thiết lập padding lại bằng code (nếu không có sẵn trong XML)
-            val paddingInDp = 16
-            val scale = resources.displayMetrics.density
-            val paddingInPx = (paddingInDp * scale + 0.5f).toInt()
-            dialogView.setPadding(paddingInPx, paddingInPx, paddingInPx, paddingInPx)
-
-            // Lấy tham chiếu tới 2 EditText
-            val senderNicknameInput = dialogView.findViewById<EditText>(R.id.editTextSenderNickname)
-            val receiverNicknameInput = dialogView.findViewById<EditText>(R.id.editTextReceiverNickname)
-
-            builder.setView(dialogView)
-            builder.setPositiveButton("Save") { dialogInterface, _ ->
-                val newSenderNickname = senderNicknameInput.text.toString().trim()
-                val newReceiverNickname = receiverNicknameInput.text.toString().trim()
-
-                if (newSenderNickname.isNotEmpty() || newReceiverNickname.isNotEmpty()) {
-                    // Tạo map cập nhật với timestamp
-                    val updateMap = hashMapOf<String, Any>(
-                        Constants.KEY_TIMESTAMP to Date()
-                    )
-                    if (newSenderNickname.isNotEmpty()) {
-                        updateMap[Constants.KEY_SENDER_NAME] = newSenderNickname
-                    }
-                    if (newReceiverNickname.isNotEmpty()) {
-                        updateMap[Constants.KEY_RECEIVER_NAME] = newReceiverNickname
-                    }
-
-                    conversionId?.let { convId ->
-                        database.collection(Constants.KEY_COLLECTION_CONVERSATIONS)
-                            .document(convId)
-                            .update(updateMap)
-                            .addOnSuccessListener {
-                                Toast.makeText(this, "Nicknames updated successfully", Toast.LENGTH_SHORT).show()
-                                // Cập nhật giao diện: nếu current user là receiver, cập nhật receiverUser.name
-                                if (newReceiverNickname.isNotEmpty()) {
-                                    receiverUser.name = newReceiverNickname
-                                }
-                                // Nếu cần cập nhật giao diện cho sender (trường hợp hiển thị sender ở nơi khác), cập nhật tại đây.
-                                loadReceiverDetails()
-                            }
-                            .addOnFailureListener {
-                                Toast.makeText(this, "Failed to update nicknames", Toast.LENGTH_SHORT).show()
-                            }
-                    } ?: run {
-                        // Nếu chưa có conversionId, cập nhật cục bộ (ví dụ đối với receiver)
-                        if (newReceiverNickname.isNotEmpty()) {
-                            receiverUser.name = newReceiverNickname
-                            loadReceiverDetails()
-                        }
-                        Toast.makeText(this, "Nicknames updated locally", Toast.LENGTH_SHORT).show()
-                    }
-                }
-                dialogInterface.dismiss()
-            }
-            builder.setNegativeButton("Cancel") { dialogInterface, _ ->
-                dialogInterface.dismiss()
-            }
-            builder.show()
-            // Giả sử "dialog" ở đây là dialog của Options đã được tạo sẵn, nếu cần đóng dialog Options:
-            dialog.dismiss()
-        }
 
         // Xử lý sự kiện click cho nút Theme: hiện dialog chọn theme
         dialogTheme.setOnClickListener {

@@ -19,8 +19,9 @@ object OneSignalNotificationService {
         appId: String,
         playerId: String,
         messageText: String,
-        senderId: String?,
-        senderName: String?
+        conversationId: String?,
+        conversationName: String?,
+        conversationImage: String?,
     ) {
         // Nếu không có Player ID, không gửi được
         if (playerId.isEmpty()) {
@@ -28,18 +29,21 @@ object OneSignalNotificationService {
             return
         }
 
-        // Xây dựng payload JSON theo yêu cầu của OneSignal
+        // Xây dựng payload JSON
         val jsonBody = JSONObject().apply {
             put("app_id", appId)
             put("include_player_ids", JSONArray().put(playerId))
-            put("headings", JSONObject().put("en", "New Message from $senderName"))
+            put("headings", JSONObject().put("en", "New Message from $conversationName"))
             put("contents", JSONObject().put("en", messageText))
             // Optional: thêm dữ liệu bổ sung nếu cần
             put("data", JSONObject().apply {
-                put("senderId", senderId ?: "")
-                put("senderName", senderName ?: "")
+                put("conversationId", conversationId ?: "")
+                put("conversationName", conversationName ?: "")
+                put("conversationImage", conversationImage ?: "")
             })
         }
+
+        Log.d("OneSignalService", "Payload JSON: $jsonBody")
 
         // Sử dụng Coroutine để gửi request
         CoroutineScope(Dispatchers.IO).launch {
