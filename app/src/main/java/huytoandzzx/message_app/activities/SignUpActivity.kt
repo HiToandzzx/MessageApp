@@ -124,13 +124,13 @@ class SignUpActivity : AppCompatActivity() {
     }
 
     private fun encodeImage(bitmap: Bitmap): String {
-        val previewWidth = 150
+        val previewWidth = 40
         val previewHeight = bitmap.height * previewWidth / bitmap.width
         val previewBitmap = Bitmap.createScaledBitmap(bitmap, previewWidth, previewHeight, false)
         val byteArrayOutputStream = ByteArrayOutputStream()
         previewBitmap.compress(Bitmap.CompressFormat.JPEG, 50, byteArrayOutputStream)
         val bytes = byteArrayOutputStream.toByteArray()
-        return Base64.encodeToString(bytes, Base64.DEFAULT)
+        return Base64.encodeToString(bytes, Base64.NO_WRAP)
     }
 
     // PICK IMAGE FOR USER

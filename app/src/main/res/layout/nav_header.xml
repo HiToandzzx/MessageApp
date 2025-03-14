@@ -9,17 +9,31 @@
 
     <ImageView
         android:id="@+id/imgHeaderProfile"
-        android:layout_width="50dp"
-        android:layout_height="50dp"
+        android:layout_width="45dp"
+        android:layout_height="45dp"
         android:scaleType="centerCrop"
         android:layout_marginEnd="12dp"/>
 
-    <TextView
-        android:id="@+id/tvHeaderUsername"
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textColor="@color/white"
-        android:textStyle="bold"
-        android:textSize="18sp"
-        android:layout_gravity="center_vertical" />
+        android:orientation="vertical"
+        android:layout_gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/tvHeaderUsername"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/white"
+            android:textStyle="bold"
+            android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/tvHeaderEmail"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/white"
+            android:textSize="12sp" />
+
+    </LinearLayout>
 </LinearLayout>

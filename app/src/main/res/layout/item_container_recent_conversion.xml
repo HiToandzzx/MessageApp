@@ -7,8 +7,8 @@
 
     <com.makeramen.roundedimageview.RoundedImageView
         android:id="@+id/imageProfile"
-        android:layout_width="50dp"
-        android:layout_height="50dp"
+        android:layout_width="45dp"
+        android:layout_height="45dp"
         android:background="@drawable/border"
         android:backgroundTint="@color/black"
         android:padding="1dp"
@@ -19,8 +19,8 @@
 
     <androidx.appcompat.widget.AppCompatImageView
         android:id="@+id/textAvailability"
-        android:layout_width="18dp"
-        android:layout_height="18dp"
+        android:layout_width="15dp"
+        android:layout_height="15dp"
         android:src="@drawable/ic_active_now"
         app:layout_constraintBottom_toBottomOf="@id/imageProfile"
         app:layout_constraintEnd_toEndOf="@id/imageProfile"/>
@@ -45,20 +45,8 @@
         android:textSize="16dp"
         app:layout_constraintBottom_toTopOf="@+id/viewSupporter"
         app:layout_constraintStart_toEndOf="@id/imageProfile"
-        app:layout_constraintEnd_toStartOf="@id/tvUnread"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <TextView
-        android:id="@+id/tvUnread"
-        android:layout_width="15dp"
-        android:layout_height="15dp"
-        android:layout_marginStart="8dp"
-        android:background="@drawable/bg_unread_count"
-        android:padding="4dp"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="@id/tvUsername"
-        app:layout_constraintBottom_toBottomOf="@id/tvUsername"
-        android:visibility="gone"/>
+        app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
         android:id="@+id/tvRecentMessage"

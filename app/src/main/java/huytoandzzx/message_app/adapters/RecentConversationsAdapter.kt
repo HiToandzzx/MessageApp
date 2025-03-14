@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Base64
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -39,6 +40,8 @@ class RecentConversationsAdapter(
         RecyclerView.ViewHolder(binding.root) {
 
         fun setData(chatMessage: ChatMessage) {
+            Log.d("RecentConversationsAdapter", "Conversation ID: ${chatMessage.conversationId}")
+
             binding.imageProfile.setImageBitmap(getConversionImage(chatMessage.conversationImage))
             binding.tvUsername.text = chatMessage.conversationName
             binding.tvRecentMessage.text = chatMessage.message
@@ -55,6 +58,8 @@ class RecentConversationsAdapter(
             }
 
             binding.root.setOnClickListener {
+                Log.d("RecentConversationsAdapter", "Clicked on conversation with: ${chatMessage.conversationName}, ID: ${chatMessage.conversationId}, Image: ${chatMessage.conversationImage}")
+
                 val user = User().apply {
                     id = chatMessage.conversationId
                     name = chatMessage.conversationName
@@ -76,4 +81,3 @@ class RecentConversationsAdapter(
         notifyDataSetChanged()
     }
 }
-

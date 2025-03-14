@@ -171,9 +171,11 @@ class MainActivity : BaseActivity(), ConversionListener {
     private fun loadNavUserDetails() {
         val headerView = binding.navigationView.getHeaderView(0)
         val navUsername = headerView.findViewById<TextView>(R.id.tvHeaderUsername)
+        val navEmail = headerView.findViewById<TextView>(R.id.tvHeaderEmail)
         val navImage = headerView.findViewById<ImageView>(R.id.imgHeaderProfile)
 
         navUsername.text = preferenceManager.getString(Constants.KEY_NAME)
+        navEmail.text = preferenceManager.getString(Constants.KEY_EMAIL)
         val image = preferenceManager.getString(Constants.KEY_IMAGE)
         val bytes = Base64.decode(image, Base64.DEFAULT)
         val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
