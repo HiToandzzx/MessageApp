@@ -67,7 +67,7 @@
             android:layout_marginBottom="30dp"
             android:gravity="center"
             android:orientation="horizontal">
-            <ImageButton
+            <!--<ImageButton
                 android:id="@+id/btnSignUpFacebook"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
@@ -76,7 +76,7 @@
                 android:contentDescription="facebook"
                 android:padding="12dp"
                 android:scaleType="fitCenter"
-                android:src="@drawable/facebook_icon" />
+                android:src="@drawable/facebook_icon" />-->
             <ImageButton
                 android:id="@+id/btnSignUpGoogle"
                 android:layout_width="48dp"

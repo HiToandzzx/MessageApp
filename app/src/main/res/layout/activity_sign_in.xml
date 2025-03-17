@@ -59,7 +59,7 @@
                 android:orientation="horizontal"
                 android:gravity="center">
 
-                <ImageButton
+                <!--<ImageButton
                     android:id="@+id/btnFacebook"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
@@ -69,7 +69,7 @@
                     android:src="@drawable/facebook_icon"
                     android:layout_marginEnd="12dp"
                     android:backgroundTint="#cccccc"
-                    android:contentDescription="facebook" />
+                    android:contentDescription="facebook" />-->
 
                 <ImageButton
                     android:id="@+id/btnGoogle"
