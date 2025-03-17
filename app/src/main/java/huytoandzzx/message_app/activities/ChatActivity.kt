@@ -124,6 +124,7 @@ class ChatActivity : BaseActivity() {
                             dateTime = getReadableDateTime(documentChange.document.getDate(Constants.KEY_TIMESTAMP) ?: Date())
                             dateObject = documentChange.document.getDate(Constants.KEY_TIMESTAMP) ?: Date()
                             reaction = documentChange.document.getString(Constants.KEY_REACTION) ?: ""
+                            isRead = documentChange.document.getBoolean(Constants.KEY_IS_READ) ?: false
                         }
                         // Kiểm tra nếu tin nhắn là ảnh (có tiền tố "IMG:")
                         if (rawMessage.startsWith("IMG:")) {
@@ -144,6 +145,7 @@ class ChatActivity : BaseActivity() {
                         val modifiedTimestamp = documentChange.document.getDate(Constants.KEY_TIMESTAMP) ?: Date()
                         val newRawMessage = documentChange.document.getString(Constants.KEY_MESSAGE) ?: ""
                         val newReaction = documentChange.document.getString(Constants.KEY_REACTION) ?: ""
+                        val newIsRead = documentChange.document.getBoolean(Constants.KEY_IS_READ) ?: false
                         for (i in chatMessages.indices) {
                             val message = chatMessages[i]
                             if (message.senderId == modifiedSender &&
@@ -151,6 +153,7 @@ class ChatActivity : BaseActivity() {
                                 message.dateObject == modifiedTimestamp) {
                                 // Cập nhật reaction
                                 message.reaction = newReaction
+                                message.isRead = newIsRead
                                 // Cập nhật nội dung tin nhắn
                                 if (newRawMessage.startsWith("IMG:")) {
                                     message.isImage = true
@@ -197,7 +200,8 @@ class ChatActivity : BaseActivity() {
             Constants.KEY_RECEIVER_ID to (receiverUser.id ?: ""),
             Constants.KEY_MESSAGE to messageText,
             Constants.KEY_TIMESTAMP to Date(),
-            Constants.KEY_REACTION to ""
+            Constants.KEY_REACTION to "",
+            Constants.KEY_IS_READ to false
         )
 
         database.collection(Constants.KEY_COLLECTION_CHAT).add(message)
@@ -253,6 +257,20 @@ class ChatActivity : BaseActivity() {
             conversationImage = preferenceManager.getString(Constants.KEY_IMAGE),
             conversationName = preferenceManager.getString(Constants.KEY_NAME),
         )
+    }
+
+    private fun markMessageAsRead() {
+        database.collection(Constants.KEY_COLLECTION_CHAT)
+            .whereEqualTo(Constants.KEY_RECEIVER_ID, preferenceManager.getString(Constants.KEY_USER_ID))
+            .whereEqualTo(Constants.KEY_SENDER_ID, receiverUser.id)
+            .get()
+            .addOnSuccessListener { querySnapshot ->
+                for (document in querySnapshot.documents) {
+                    if (document.getBoolean(Constants.KEY_IS_READ) == false) {
+                        document.reference.update(Constants.KEY_IS_READ, true)
+                    }
+                }
+            }
     }
 
     @Deprecated("Deprecated in Java")
@@ -774,5 +792,6 @@ class ChatActivity : BaseActivity() {
         super.onResume()
         listenAvailabilityOfReceiver()
         loadThemeColor()
+        markMessageAsRead()
     }
 }

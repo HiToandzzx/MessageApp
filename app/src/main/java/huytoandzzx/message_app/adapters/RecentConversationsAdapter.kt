@@ -15,6 +15,7 @@ import huytoandzzx.message_app.listeners.ConversionListener
 import huytoandzzx.message_app.models.ChatMessage
 import huytoandzzx.message_app.models.User
 import huytoandzzx.message_app.utilities.Constants
+import huytoandzzx.message_app.utilities.PreferenceManager
 
 class RecentConversationsAdapter(
     private var chatMessages: List<ChatMessage>,
@@ -46,6 +47,13 @@ class RecentConversationsAdapter(
             binding.tvUsername.text = chatMessage.conversationName
             binding.tvRecentMessage.text = chatMessage.message
 
+            // Lấy userId hiện tại từ PreferenceManager
+            val currentUserId =
+                PreferenceManager(binding.root.context).getString(Constants.KEY_USER_ID)
+
+            // Kiểm tra tin nhắn chưa đọc
+            checkUnreadMessages(chatMessage, currentUserId)
+
             // Ẩn/hiện trạng thái online
             binding.textAvailability.visibility = View.GONE
             val userRef = FirebaseFirestore.getInstance().collection(Constants.KEY_COLLECTION_USERS)
@@ -53,12 +61,17 @@ class RecentConversationsAdapter(
             userRef.addSnapshotListener { document, _ ->
                 if (document != null && document.exists()) {
                     val availability = document.getLong(Constants.KEY_AVAILABILITY)
-                    binding.textAvailability.visibility = if (availability?.toInt() == 1) View.VISIBLE else View.GONE
+                    binding.textAvailability.visibility =
+                        if (availability?.toInt() == 1) View.VISIBLE else View.GONE
                 }
             }
 
+            // Sự kiện click vào cuộc trò chuyện
             binding.root.setOnClickListener {
-                Log.d("RecentConversationsAdapter", "Clicked on conversation with: ${chatMessage.conversationName}, ID: ${chatMessage.conversationId}, Image: ${chatMessage.conversationImage}")
+                Log.d(
+                    "RecentConversationsAdapter",
+                    "Clicked on conversation with: ${chatMessage.conversationName}, ID: ${chatMessage.conversationId}, Image: ${chatMessage.conversationImage}"
+                )
 
                 val user = User().apply {
                     id = chatMessage.conversationId
@@ -66,12 +79,62 @@ class RecentConversationsAdapter(
                     image = chatMessage.conversationImage
                 }
                 conversionListener.onConversionClicked(user)
+
+                markMessagesAsRead(chatMessage.conversationId, currentUserId)
+                binding.unRead.visibility = View.GONE
+                binding.tvRecentMessage.setTypeface(null, android.graphics.Typeface.NORMAL)
+                binding.tvRecentMessage.setTextColor(android.graphics.Color.GRAY)
             }
         }
 
         private fun getConversionImage(encodedImage: String): Bitmap {
             val bytes = Base64.decode(encodedImage, Base64.DEFAULT)
             return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+        }
+
+        private fun checkUnreadMessages(chatMessage: ChatMessage, currentUserId: String?) {
+            val chatRef = FirebaseFirestore.getInstance().collection(Constants.KEY_COLLECTION_CHAT)
+
+            chatRef
+                .whereEqualTo(Constants.KEY_SENDER_ID, chatMessage.conversationId)
+                .whereEqualTo(Constants.KEY_RECEIVER_ID, currentUserId)
+                .whereEqualTo(Constants.KEY_IS_READ, false)
+                .get()
+                .addOnSuccessListener { querySnapshot ->
+                    // Nếu có tin nhắn chưa đọc, hiển thị chấm đỏ và chỉnh style text
+                    if (!querySnapshot.isEmpty) {
+                        binding.unRead.visibility = View.VISIBLE
+                        binding.tvRecentMessage.setTypeface(null, android.graphics.Typeface.BOLD)
+                        binding.tvRecentMessage.setTextColor(android.graphics.Color.BLACK)
+                    } else {
+                        binding.unRead.visibility = View.GONE
+                        binding.tvRecentMessage.setTypeface(null, android.graphics.Typeface.NORMAL)
+                        binding.tvRecentMessage.setTextColor(android.graphics.Color.GRAY)
+                    }
+                }
+                .addOnFailureListener { e ->
+                    Log.e("RecentConversationsAdapter", "Error checking unread messages", e)
+                }
+        }
+
+        // Đánh dấu tin nhắn là đã đọc
+        private fun markMessagesAsRead(conversationId: String, currentUserId: String?) {
+            val chatRef = FirebaseFirestore.getInstance().collection(Constants.KEY_COLLECTION_CHAT)
+
+            // Lấy các tin nhắn chưa đọc từ người gửi hiện tại
+            chatRef
+                .whereEqualTo(Constants.KEY_SENDER_ID, conversationId)
+                .whereEqualTo(Constants.KEY_RECEIVER_ID, currentUserId)
+                .whereEqualTo(Constants.KEY_IS_READ, false)
+                .get()
+                .addOnSuccessListener { querySnapshot ->
+                    for (document in querySnapshot.documents) {
+                        document.reference.update(Constants.KEY_IS_READ, true)
+                    }
+                }
+                .addOnFailureListener { e ->
+                    Log.e("RecentConversationsAdapter", "Error marking messages as read", e)
+                }
         }
     }
 
