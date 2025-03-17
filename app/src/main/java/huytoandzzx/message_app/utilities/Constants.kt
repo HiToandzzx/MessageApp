@@ -30,6 +30,8 @@ object Constants {
     const val KEY_SENDER_IMAGE = "senderImage"
     const val KEY_RECEIVER_IMAGE = "receiverImage"
     const val KEY_LAST_MESSAGE = "lastMessage"
+    const val KEY_MUTE_SENDER = "muteBySender"
+    const val KEY_MUTE_RECEIVER = "muteByReceiver"
     const val KEY_THEME_COLOR = "theme_color"
 
     const val KEY_AVAILABILITY = "availability"

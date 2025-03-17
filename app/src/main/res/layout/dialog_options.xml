@@ -26,29 +26,6 @@
             android:layout_marginTop="4dp"/>
     </LinearLayout>
 
-    <!--NICKNAME-->
-    <!--<LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:layout_gravity="center_horizontal"
-        android:gravity="center_horizontal"
-        android:layout_marginEnd="20dp">
-
-        <ImageView
-            android:id="@+id/dialogNickName"
-            android:layout_width="30dp"
-            android:layout_height="30dp"
-            android:src="@drawable/ic_nickname"/>
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Nick Name"
-            android:textColor="@android:color/white"
-            android:layout_marginTop="4dp"/>
-    </LinearLayout>-->
-
     <!--THEME-->
     <LinearLayout
         android:layout_width="wrap_content"
@@ -68,6 +45,30 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Theme"
+            android:textColor="@android:color/white"
+            android:layout_marginTop="4dp"/>
+    </LinearLayout>
+
+    <!--NOTIFICATION-->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_gravity="center_horizontal"
+        android:gravity="center_horizontal"
+        android:layout_marginEnd="20dp">
+
+        <ImageView
+            android:id="@+id/dialogNotification"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:src="@drawable/ic_notifications"/>
+
+        <TextView
+            android:id="@+id/dialogNotificationText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Mute"
             android:textColor="@android:color/white"
             android:layout_marginTop="4dp"/>
     </LinearLayout>

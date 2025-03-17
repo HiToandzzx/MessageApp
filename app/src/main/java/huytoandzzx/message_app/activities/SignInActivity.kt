@@ -127,27 +127,28 @@ class SignInActivity : AppCompatActivity() {
         }
     }
 
-    // Xác thực với Firebase sau khi đăng nhập Google
     private fun firebaseAuthWithGoogle(account: GoogleSignInAccount?) {
         val idToken = account?.idToken
         if (idToken == null) {
             showToast("ID Token is null")
             return
         }
+
         val credential = GoogleAuthProvider.getCredential(idToken, null)
         firebaseAuth.signInWithCredential(credential)
             .addOnCompleteListener(this) { task ->
                 if (task.isSuccessful) {
                     val user = firebaseAuth.currentUser
                     val database = FirebaseFirestore.getInstance()
-                    // Kiểm tra xem user đã có trong Firestore hay chưa theo email
+
+                    // Kiểm tra xem user đã tồn tại trong Firestore chưa
                     database.collection(Constants.KEY_COLLECTION_USERS)
                         .whereEqualTo(Constants.KEY_EMAIL, user?.email)
                         .get()
                         .addOnCompleteListener { queryTask ->
                             if (queryTask.isSuccessful) {
                                 if (queryTask.result != null && queryTask.result!!.documents.size > 0) {
-                                    // Nếu đã tồn tại, lấy dữ liệu user từ Firestore
+                                    // Nếu user đã tồn tại -> lấy dữ liệu từ Firestore
                                     val documentSnapshot = queryTask.result!!.documents[0]
                                     preferenceManager.putBoolean(Constants.KEY_IS_SIGNED_IN, true)
                                     preferenceManager.putString(Constants.KEY_USER_ID, documentSnapshot.id)
@@ -156,47 +157,67 @@ class SignInActivity : AppCompatActivity() {
                                     preferenceManager.putString(Constants.KEY_EMAIL, documentSnapshot.getString(Constants.KEY_EMAIL) ?: "")
                                     startMainActivity()
                                 } else {
-                                    // Nếu chưa tồn tại, tạo mới document cho user trong Firestore
+                                    // Nếu user chưa tồn tại -> tạo mới user trong Firestore
                                     val userId = user?.uid ?: ""
-                                    // Nếu user có photoUrl thì chuyển về base64 trước khi lưu
+                                    val userName = user?.displayName ?: ""
+                                    val userEmail = user?.email ?: ""
+
+                                    // Xử lý ảnh đại diện nếu có
                                     if (user?.photoUrl != null) {
-                                        convertImageUrlToBase64(user.photoUrl.toString()) { base64Image ->
-                                            val userMap = hashMapOf<String, Any>(
-                                                Constants.KEY_NAME to (user.displayName ?: ""),
-                                                Constants.KEY_EMAIL to (user.email ?: ""),
-                                                Constants.KEY_IMAGE to (base64Image ?: user.photoUrl.toString())
-                                            )
-                                            database.collection(Constants.KEY_COLLECTION_USERS)
-                                                .document(userId)
-                                                .set(userMap)
-                                                .addOnSuccessListener {
-                                                    preferenceManager.putBoolean(Constants.KEY_IS_SIGNED_IN, true)
-                                                    preferenceManager.putString(Constants.KEY_USER_ID, userId)
-                                                    preferenceManager.putString(Constants.KEY_NAME, user.displayName ?: "")
-                                                    preferenceManager.putString(Constants.KEY_IMAGE, userMap[Constants.KEY_IMAGE] as String)
-                                                    preferenceManager.putString(Constants.KEY_EMAIL, user.email ?: "")
-                                                    startMainActivity()
-                                                }
-                                                .addOnFailureListener {
-                                                    showToast("Failed to save user data")
-                                                }
-                                        }
+                                        Thread {
+                                            try {
+                                                // Tải ảnh từ URL
+                                                val inputStream = URL(user.photoUrl.toString()).openStream()
+                                                val bitmap = BitmapFactory.decodeStream(inputStream)
+                                                inputStream.close()
+
+                                                // Mã hóa ảnh thành Base64
+                                                val base64Image = encodeImage(bitmap)
+
+                                                // Tạo user map để lưu vào Firestore
+                                                val userMap = hashMapOf<String, Any>(
+                                                    Constants.KEY_NAME to userName,
+                                                    Constants.KEY_EMAIL to userEmail,
+                                                    Constants.KEY_IMAGE to base64Image
+                                                )
+
+                                                // Lưu user mới vào Firestore
+                                                database.collection(Constants.KEY_COLLECTION_USERS)
+                                                    .document(userId)
+                                                    .set(userMap)
+                                                    .addOnSuccessListener {
+                                                        preferenceManager.putBoolean(Constants.KEY_IS_SIGNED_IN, true)
+                                                        preferenceManager.putString(Constants.KEY_USER_ID, userId)
+                                                        preferenceManager.putString(Constants.KEY_NAME, userName)
+                                                        preferenceManager.putString(Constants.KEY_IMAGE, base64Image)
+                                                        preferenceManager.putString(Constants.KEY_EMAIL, userEmail)
+                                                        runOnUiThread { startMainActivity() }
+                                                    }
+                                                    .addOnFailureListener {
+                                                        runOnUiThread { showToast("Failed to save user data") }
+                                                    }
+                                            } catch (e: Exception) {
+                                                e.printStackTrace()
+                                                runOnUiThread { showToast("Failed to process profile image") }
+                                            }
+                                        }.start()
                                     } else {
-                                        // Nếu không có photoUrl
+                                        // Trường hợp user không có ảnh đại diện
                                         val userMap = hashMapOf<String, Any>(
-                                            Constants.KEY_NAME to (user?.displayName ?: ""),
-                                            Constants.KEY_EMAIL to (user?.email ?: ""),
+                                            Constants.KEY_NAME to userName,
+                                            Constants.KEY_EMAIL to userEmail,
                                             Constants.KEY_IMAGE to ""
                                         )
+
                                         database.collection(Constants.KEY_COLLECTION_USERS)
                                             .document(userId)
                                             .set(userMap)
                                             .addOnSuccessListener {
                                                 preferenceManager.putBoolean(Constants.KEY_IS_SIGNED_IN, true)
                                                 preferenceManager.putString(Constants.KEY_USER_ID, userId)
-                                                preferenceManager.putString(Constants.KEY_NAME, user?.displayName ?: "")
-                                                preferenceManager.putString(Constants.KEY_IMAGE, userMap[Constants.KEY_IMAGE] as String)
-                                                preferenceManager.putString(Constants.KEY_EMAIL, user?.email ?: "")
+                                                preferenceManager.putString(Constants.KEY_NAME, userName)
+                                                preferenceManager.putString(Constants.KEY_IMAGE, "")
+                                                preferenceManager.putString(Constants.KEY_EMAIL, userEmail)
                                                 startMainActivity()
                                             }
                                             .addOnFailureListener {
@@ -220,29 +241,14 @@ class SignInActivity : AppCompatActivity() {
         startActivity(intent)
     }
 
-    // Hàm chuyển đổi ảnh từ URL sang chuỗi Base64
-    private fun convertImageUrlToBase64(url: String, callback: (String?) -> Unit) {
-        Thread {
-            try {
-                val connection = URL(url).openConnection()
-                connection.connect()
-                val inputStream = connection.getInputStream()
-                val bitmap = BitmapFactory.decodeStream(inputStream)
-                inputStream.close()
-                val outputStream = ByteArrayOutputStream()
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
-                val byteArray = outputStream.toByteArray()
-                val base64String = Base64.encodeToString(byteArray, Base64.DEFAULT)
-                runOnUiThread {
-                    callback(base64String)
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                runOnUiThread {
-                    callback(null)
-                }
-            }
-        }.start()
+    private fun encodeImage(bitmap: Bitmap): String {
+        val previewWidth = 40
+        val previewHeight = bitmap.height * previewWidth / bitmap.width
+        val previewBitmap = Bitmap.createScaledBitmap(bitmap, previewWidth, previewHeight, false)
+        val byteArrayOutputStream = ByteArrayOutputStream()
+        previewBitmap.compress(Bitmap.CompressFormat.JPEG, 50, byteArrayOutputStream)
+        val bytes = byteArrayOutputStream.toByteArray()
+        return Base64.encodeToString(bytes, Base64.NO_WRAP)
     }
 
     // ------------------- End Google Sign-In -------------------

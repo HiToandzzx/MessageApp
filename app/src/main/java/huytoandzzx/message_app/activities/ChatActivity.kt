@@ -10,6 +10,7 @@ import android.graphics.Color
 import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Base64
+import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
@@ -217,8 +218,22 @@ class ChatActivity : BaseActivity() {
         }
 
         // Push background notification
-        if (!isReceiverAvailable) {
-            sendPushNotification(if (messageText.startsWith("IMG:")) "[Image]" else messageText)
+        if (!isReceiverAvailable && conversionId != null) {
+            database.collection(Constants.KEY_COLLECTION_CONVERSATIONS)
+                .document(conversionId!!)
+                .get()
+                .addOnSuccessListener { document ->
+                    val isMuted = if (preferenceManager.getString(Constants.KEY_USER_ID) == document.getString(Constants.KEY_SENDER_ID)) {
+                        document.getBoolean(Constants.KEY_MUTE_RECEIVER) ?: false
+                    } else {
+                        document.getBoolean(Constants.KEY_MUTE_SENDER) ?: false
+                    }
+
+                    // Chỉ gửi thông báo nếu người nhận chưa bật mute
+                    if (!isMuted) {
+                        sendPushNotification(if (messageText.startsWith("IMG:")) "[Image]" else messageText)
+                    }
+                }
         }
 
         binding.inputMessage.setText("")
@@ -287,7 +302,7 @@ class ChatActivity : BaseActivity() {
     }
 
     // OPEN DIALOG CHAT OPTIONS
-    @SuppressLint("MissingInflatedId")
+    @SuppressLint("MissingInflatedId", "SetTextI18n")
     private fun showOptionsDialog() {
         // Inflate layout cho dialog
         val dialogView = layoutInflater.inflate(R.layout.dialog_options, null)
@@ -309,6 +324,71 @@ class ChatActivity : BaseActivity() {
         // Lấy tham chiếu tới các view trong dialog
         val dialogTheme = dialogView.findViewById<androidx.appcompat.widget.AppCompatImageView>(R.id.dialogTheme)
         val dialogDelete = dialogView.findViewById<androidx.appcompat.widget.AppCompatImageView>(R.id.dialogDelete)
+        val dialogNotification = dialogView.findViewById<androidx.appcompat.widget.AppCompatImageView>(R.id.dialogNotification)
+        val dialogNotificationText = dialogView.findViewById<TextView>(R.id.dialogNotificationText)
+
+        conversionId?.let { convId ->
+            val currentUserId = preferenceManager.getString(Constants.KEY_USER_ID) ?: ""
+
+            // Lấy chính xác giá trị senderId từ Firestore
+            val docRef = database.collection(Constants.KEY_COLLECTION_CONVERSATIONS).document(convId)
+
+            docRef.get().addOnSuccessListener { document ->
+                if (document != null && document.exists()) {
+                    val senderId = document.getString(Constants.KEY_SENDER_ID) ?: ""
+                    val isCurrentUserSender = currentUserId == senderId
+
+                    val updateField = if (isCurrentUserSender) {
+                        Constants.KEY_MUTE_SENDER
+                    } else {
+                        Constants.KEY_MUTE_RECEIVER
+                    }
+
+                    // Lắng nghe thay đổi realtime cho document
+                    docRef.addSnapshotListener { documentSnapshot, error ->
+                        if (error != null) {
+                            Toast.makeText(this, "Failed to load notification status", Toast.LENGTH_SHORT).show()
+                            return@addSnapshotListener
+                        }
+
+                        if (documentSnapshot != null && documentSnapshot.exists()) {
+                            val isMuted = documentSnapshot.getBoolean(updateField) ?: false
+
+                            if (!isMuted) {
+                                dialogNotification.setImageResource(R.drawable.ic_notification_off)
+                                dialogNotificationText.text = "Mute"
+                                binding.ivNotification.visibility = View.GONE
+                            } else {
+                                dialogNotification.setImageResource(R.drawable.ic_notifications)
+                                dialogNotificationText.text = "Unmute"
+                                binding.ivNotification.visibility = View.VISIBLE
+                            }
+
+                            dialogNotification.setOnClickListener {
+                                val newMutedStatus = !isMuted
+                                docRef.update(updateField, newMutedStatus)
+                                    .addOnSuccessListener {
+                                        if (newMutedStatus) {
+                                            dialogNotification.setImageResource(R.drawable.ic_notification_off)
+                                            dialogNotificationText.text = "Mute"
+                                        } else {
+                                            dialogNotification.setImageResource(R.drawable.ic_notifications)
+                                            dialogNotificationText.text = "Unmute"
+                                        }
+
+                                        val status = if (newMutedStatus) "muted" else "unmuted"
+                                        Toast.makeText(this, "Notifications $status", Toast.LENGTH_SHORT).show()
+                                    }
+                                    .addOnFailureListener {
+                                        Toast.makeText(this, "Failed to update notification status", Toast.LENGTH_SHORT).show()
+                                    }
+                                dialog.dismiss()
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         // Xử lý sự kiện click cho nút Theme: hiện dialog chọn theme
         dialogTheme.setOnClickListener {
@@ -488,6 +568,9 @@ class ChatActivity : BaseActivity() {
     }
 
     private fun addConversion(conversion: HashMap<String, Any>) {
+        conversion[Constants.KEY_MUTE_SENDER] = false
+        conversion[Constants.KEY_MUTE_RECEIVER] = false
+
         database.collection(Constants.KEY_COLLECTION_CONVERSATIONS)
             .add(conversion)
             .addOnSuccessListener { documentReference ->
@@ -501,6 +584,23 @@ class ChatActivity : BaseActivity() {
             Constants.KEY_LAST_MESSAGE, message,
             Constants.KEY_TIMESTAMP, Date()
         )
+    }
+
+    private val conversionOnCompleteListener = OnCompleteListener<QuerySnapshot> { task ->
+        if (task.isSuccessful && task.result != null && (task.result?.documents?.size ?: 0) > 0) {
+            val documentSnapshot = task.result?.documents?.get(0)
+            conversionId = documentSnapshot?.id
+
+            val themeColorLong = documentSnapshot?.getLong(Constants.KEY_THEME_COLOR)
+            themeColorLong?.let {
+                applyThemeColor(it.toInt())
+            }
+
+            // Kiểm tra trạng thái mute
+            val muteSender = documentSnapshot?.getBoolean(Constants.KEY_MUTE_SENDER) ?: false
+            val muteReceiver = documentSnapshot?.getBoolean(Constants.KEY_MUTE_RECEIVER) ?: false
+            Log.d("MUTE_STATUS", "Sender Muted: $muteSender, Receiver Muted: $muteReceiver")
+        }
     }
 
     // CHECK USER CÓ ONLINE
@@ -582,6 +682,61 @@ class ChatActivity : BaseActivity() {
             receiverUser.id ?: "",
             preferenceManager.getString(Constants.KEY_USER_ID) ?: ""
         )
+
+        // Kiểm tra cả hai chiều sender và receiver
+        database.collection(Constants.KEY_COLLECTION_CONVERSATIONS)
+            .whereEqualTo(Constants.KEY_SENDER_ID, preferenceManager.getString(Constants.KEY_USER_ID))
+            .whereEqualTo(Constants.KEY_RECEIVER_ID, receiverUser.id)
+            .get()
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful && task.result != null && task.result.documents.isNotEmpty()) {
+                    val documentSnapshot = task.result.documents[0]
+                    conversionId = documentSnapshot.id
+                    checkNotificationStatus()
+                } else {
+                    database.collection(Constants.KEY_COLLECTION_CONVERSATIONS)
+                        .whereEqualTo(Constants.KEY_SENDER_ID, receiverUser.id)
+                        .whereEqualTo(Constants.KEY_RECEIVER_ID, preferenceManager.getString(Constants.KEY_USER_ID))
+                        .get()
+                        .addOnCompleteListener { reverseTask ->
+                            if (reverseTask.isSuccessful && reverseTask.result != null && reverseTask.result.documents.isNotEmpty()) {
+                                val reverseSnapshot = reverseTask.result.documents[0]
+                                conversionId = reverseSnapshot.id
+                                checkNotificationStatus()
+                            }
+                        }
+                }
+            }
+    }
+
+    private fun checkNotificationStatus() {
+        conversionId?.let { convId ->
+            val currentUserId = preferenceManager.getString(Constants.KEY_USER_ID) ?: ""
+            val docRef = database.collection(Constants.KEY_COLLECTION_CONVERSATIONS).document(convId)
+
+            docRef.addSnapshotListener { document, error ->
+                if (error != null || document == null || !document.exists()) return@addSnapshotListener
+
+                val senderId = document.getString(Constants.KEY_SENDER_ID) ?: ""
+                val receiverId = document.getString(Constants.KEY_RECEIVER_ID) ?: ""
+
+                // Kiểm tra đúng trạng thái mute cho cả hai phía
+                val muteSender = document.getBoolean(Constants.KEY_MUTE_SENDER) ?: false
+                val muteReceiver = document.getBoolean(Constants.KEY_MUTE_RECEIVER) ?: false
+
+                val isMuted = when (currentUserId) {
+                    senderId -> muteSender
+                    receiverId -> muteReceiver
+                    else -> false
+                }
+
+                if (isMuted) {
+                    binding.ivNotification.visibility = View.VISIBLE
+                } else {
+                    binding.ivNotification.visibility = View.GONE
+                }
+            }
+        }
     }
 
     private fun checkForConversionRemotely(senderId: String, receiverId: String) {
@@ -590,18 +745,6 @@ class ChatActivity : BaseActivity() {
             .whereEqualTo(Constants.KEY_RECEIVER_ID, receiverId)
             .get()
             .addOnCompleteListener(conversionOnCompleteListener)
-    }
-
-    private val conversionOnCompleteListener = OnCompleteListener<QuerySnapshot> { task ->
-        if (task.isSuccessful && task.result != null && (task.result?.documents?.size ?: 0) > 0) {
-            val documentSnapshot = task.result?.documents?.get(0)
-            conversionId = documentSnapshot?.id
-            // Kiểm tra và áp dụng theme nếu đã lưu trước đó
-            val themeColorLong = documentSnapshot?.getLong(Constants.KEY_THEME_COLOR)
-            themeColorLong?.let {
-                applyThemeColor(it.toInt())
-            }
-        }
     }
 
     private fun getReadableDateTime(date: Date): String {

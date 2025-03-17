@@ -52,6 +52,17 @@
         app:layout_constraintTop_toTopOf="@id/imageBack"
         app:layout_constraintBottom_toBottomOf="@id/imageBack"/>
 
+    <ImageView
+        android:id="@+id/ivNotification"
+        android:layout_width="25dp"
+        android:layout_height="25dp"
+        android:padding="3dp"
+        android:src="@drawable/ic_notification_off"
+        android:background="@drawable/bg_unread_count"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="@+id/imageAvatar"
+        app:layout_constraintBottom_toBottomOf="@id/imageAvatar" />
+
     <!-- USER NAME -->
     <TextView
         android:id="@+id/tvName"
