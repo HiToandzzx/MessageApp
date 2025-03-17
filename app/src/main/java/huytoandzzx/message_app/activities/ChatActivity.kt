@@ -486,6 +486,9 @@ class ChatActivity : BaseActivity() {
         currentThemeColor = color
         binding.root.setBackgroundColor(color)
         binding.headerBackground.setBackgroundColor(color)
+        val drawable = ContextCompat.getDrawable(this, R.drawable.ic_send)
+        drawable?.setTint(color)
+        binding.btnLayoutSend.setImageDrawable(drawable)
         chatAdapter.updateThemeColor(color)
     }
 
@@ -508,6 +511,41 @@ class ChatActivity : BaseActivity() {
                     // Xử lý lỗi nếu việc cập nhật thất bại
                 }
         }
+    }
+
+    private fun loadThemeColor() {
+        conversionId?.let { convId ->
+            database.collection(Constants.KEY_COLLECTION_CONVERSATIONS)
+                .document(convId)
+                .get()
+                .addOnSuccessListener { document ->
+                    if (document.exists()) {
+                        val themeColor = document.getLong(Constants.KEY_THEME_COLOR)
+                        themeColor?.let {
+                            applyThemeColor(it.toInt())
+                        }
+                    }
+                }
+        }
+    }
+
+    private fun addConversion(conversion: HashMap<String, Any>) {
+        conversion[Constants.KEY_MUTE_SENDER] = false
+        conversion[Constants.KEY_MUTE_RECEIVER] = false
+
+        database.collection(Constants.KEY_COLLECTION_CONVERSATIONS)
+            .add(conversion)
+            .addOnSuccessListener { documentReference ->
+                conversionId = documentReference.id
+            }
+    }
+
+    private fun updateConversion(message: String) {
+        val documentReference = database.collection(Constants.KEY_COLLECTION_CONVERSATIONS).document(conversionId!!)
+        documentReference.update(
+            Constants.KEY_LAST_MESSAGE, message,
+            Constants.KEY_TIMESTAMP, Date()
+        )
     }
 
     // XOÁ ĐOẠN CHAT
@@ -551,41 +589,6 @@ class ChatActivity : BaseActivity() {
             }
     }
 
-    private fun loadThemeColor() {
-        conversionId?.let { convId ->
-            database.collection(Constants.KEY_COLLECTION_CONVERSATIONS)
-                .document(convId)
-                .get()
-                .addOnSuccessListener { document ->
-                    if (document.exists()) {
-                        val themeColor = document.getLong(Constants.KEY_THEME_COLOR)
-                        themeColor?.let {
-                            applyThemeColor(it.toInt())
-                        }
-                    }
-                }
-        }
-    }
-
-    private fun addConversion(conversion: HashMap<String, Any>) {
-        conversion[Constants.KEY_MUTE_SENDER] = false
-        conversion[Constants.KEY_MUTE_RECEIVER] = false
-
-        database.collection(Constants.KEY_COLLECTION_CONVERSATIONS)
-            .add(conversion)
-            .addOnSuccessListener { documentReference ->
-                conversionId = documentReference.id
-            }
-    }
-
-    private fun updateConversion(message: String) {
-        val documentReference = database.collection(Constants.KEY_COLLECTION_CONVERSATIONS).document(conversionId!!)
-        documentReference.update(
-            Constants.KEY_LAST_MESSAGE, message,
-            Constants.KEY_TIMESTAMP, Date()
-        )
-    }
-
     private val conversionOnCompleteListener = OnCompleteListener<QuerySnapshot> { task ->
         if (task.isSuccessful && task.result != null && (task.result?.documents?.size ?: 0) > 0) {
             val documentSnapshot = task.result?.documents?.get(0)
@@ -619,9 +622,11 @@ class ChatActivity : BaseActivity() {
                 }
 
                 if (isReceiverAvailable) {
-                    binding.textAvailability.visibility = View.VISIBLE
+                    binding.imageStatus.visibility = View.VISIBLE
+                    binding.tvStatus.visibility = View.VISIBLE
                 } else {
-                    binding.textAvailability.visibility = View.GONE
+                    binding.imageStatus.visibility = View.GONE
+                    binding.tvStatus.visibility = View.GONE
                 }
             }
     }

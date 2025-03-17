@@ -2,8 +2,8 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="primary">#24786D</color>
-    <color name="sub_primary">#8d99ae</color>
+    <color name="primary">#20A090</color>
+    <color name="sub_primary">#797C7B</color>
 
     <!-- Các màu theme -->
     <color name="theme_shade">#9C27B0</color>

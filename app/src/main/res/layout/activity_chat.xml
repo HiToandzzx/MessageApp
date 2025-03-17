@@ -5,7 +5,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#2a9d8f"
+    android:background="@color/primary"
     android:animateLayoutChanges="true"
     tools:context=".activities.ChatActivity">
 
@@ -24,16 +24,16 @@
         android:id="@+id/headerBackground"
         android:layout_width="match_parent"
         android:layout_height="80dp"
-        android:background="#2a9d8f"
+        android:background="@color/primary"
         app:layout_constraintTop_toTopOf="parent" />
 
     <!-- BUTTON BACK -->
     <androidx.appcompat.widget.AppCompatImageView
         android:id="@+id/imageBack"
-        android:layout_width="30dp"
-        android:layout_height="30dp"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
         android:layout_marginStart="20dp"
-        android:layout_marginTop="20dp"
+        android:layout_marginTop="25dp"
         android:src="@drawable/ic_btn_back"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"/>
@@ -43,73 +43,73 @@
         android:id="@+id/imageAvatar"
         android:layout_width="45dp"
         android:layout_height="45dp"
-        android:background="@drawable/border"
         android:padding="1dp"
         android:scaleType="centerCrop"
-        android:layout_marginHorizontal="10dp"
+        android:layout_marginHorizontal="12dp"
+        android:background="@drawable/border"
         app:riv_oval="true"
         app:layout_constraintStart_toEndOf="@id/imageBack"
         app:layout_constraintTop_toTopOf="@id/imageBack"
         app:layout_constraintBottom_toBottomOf="@id/imageBack"/>
 
-    <ImageView
-        android:id="@+id/ivNotification"
-        android:layout_width="25dp"
-        android:layout_height="25dp"
-        android:padding="3dp"
-        android:src="@drawable/ic_notification_off"
-        android:background="@drawable/bg_unread_count"
-        android:visibility="gone"
-        app:layout_constraintEnd_toEndOf="@+id/imageAvatar"
-        app:layout_constraintBottom_toBottomOf="@id/imageAvatar" />
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/imageStatus"
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:src="@drawable/ic_active_now"
+        app:layout_constraintBottom_toBottomOf="@+id/imageAvatar"
+        app:layout_constraintEnd_toEndOf="@+id/imageAvatar"/>
 
     <!-- USER NAME -->
     <TextView
         android:id="@+id/tvName"
-        android:layout_width="0dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginHorizontal="10dp"
+        android:layout_marginHorizontal="12dp"
         android:ellipsize="end"
         android:gravity="start"
         android:maxLines="1"
         android:textColor="@color/white"
-        android:textSize="20sp"
+        android:textSize="18sp"
         android:textStyle="bold"
         app:layout_constraintBottom_toBottomOf="@id/imageBack"
-        app:layout_constraintEnd_toStartOf="@id/imgMore"
         app:layout_constraintStart_toEndOf="@id/imageAvatar"
         app:layout_constraintTop_toTopOf="@id/imageBack" />
 
+    <ImageView
+        android:id="@+id/ivNotification"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_marginStart="5dp"
+        android:src="@drawable/ic_notification_off"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="@id/tvName"
+        app:layout_constraintBottom_toBottomOf="@id/tvName"
+        app:layout_constraintStart_toEndOf="@id/tvName" />
+
+
+    <!-- MORE OPTIONS -->
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/imgMore"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginEnd="20dp"
+        android:layout_marginTop="25dp"
+        android:src="@drawable/ic_setting_chat"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
     <!-- TEXT STATUS + ICON STATUS -->
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/textAvailability"
+    <TextView
+        android:id="@+id/tvStatus"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:paddingBottom="15dp"
+        android:text="Active now"
+        android:textColor="@color/white"
+        android:textSize="13sp"
         app:layout_constraintTop_toBottomOf="@id/tvName"
         app:layout_constraintStart_toStartOf="@id/tvName"
-        android:visibility="gone">
-        <androidx.appcompat.widget.AppCompatImageView
-            android:id="@+id/imageStatus"
-            android:layout_width="16dp"
-            android:layout_height="16dp"
-            android:layout_marginEnd="4dp"
-            android:src="@drawable/ic_active_now"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintStart_toStartOf="parent"/>
-        <TextView
-            android:id="@+id/tvStatus"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Active now"
-            android:textColor="@color/white"
-            android:textSize="15sp"
-            android:layout_marginStart="8dp"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintStart_toEndOf="@id/imageStatus"/>
-    </androidx.constraintlayout.widget.ConstraintLayout>
+        android:visibility="gone"/>
 
     <!-- CONVERSATION -->
     <androidx.recyclerview.widget.RecyclerView
@@ -139,17 +139,19 @@
     <!-- BUTTON SEND -->
     <FrameLayout
         android:id="@+id/layoutSend"
-        android:layout_width="50dp"
-        android:layout_height="50dp"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="12dp"
+        android:padding="8dp"
+        android:background="@drawable/border_btn"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
         <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/btnLayoutSend"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:padding="8dp"
             android:background="@drawable/ic_send" />
     </FrameLayout>
 
@@ -157,7 +159,7 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/layoutInput"
         android:layout_width="0dp"
-        android:layout_height="50dp"
+        android:layout_height="40dp"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="10dp"
         android:layout_marginBottom="12dp"
@@ -165,11 +167,10 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@id/layoutSend"
         app:layout_constraintStart_toStartOf="parent">
-
         <androidx.appcompat.widget.AppCompatImageView
             android:id="@+id/imgAttach"
-            android:layout_width="30dp"
-            android:layout_height="30dp"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
             android:layout_marginStart="8dp"
             android:layout_marginEnd="8dp"
             android:src="@drawable/ic_attach"
@@ -177,73 +178,23 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"/>
 
-        <!-- PREVIEW IMAGE CONTAINER -->
-        <androidx.constraintlayout.widget.ConstraintLayout
-            android:id="@+id/layoutPreview"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:padding="10dp"
-            android:visibility="gone"
-            android:background="@color/white"
-            app:layout_constraintBottom_toTopOf="@id/layoutInput"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent">
-
-            <!-- PREVIEW IMAGE -->
-            <ImageView
-                android:id="@+id/ivPreview"
-                android:layout_width="100dp"
-                android:layout_height="100dp"
-                android:scaleType="centerCrop"
-                android:background="@drawable/border"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintBottom_toBottomOf="parent"/>
-
-            <!-- CANCEL PREVIEW BUTTON -->
-            <androidx.appcompat.widget.AppCompatImageView
-                android:id="@+id/btnCancelPreview"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:layout_marginStart="10dp"
-                android:src="@drawable/ic_nickname"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                app:tint="@color/black"
-                app:layout_constraintStart_toEndOf="@id/ivPreview"
-                app:layout_constraintTop_toTopOf="@id/ivPreview"
-                app:layout_constraintBottom_toBottomOf="@id/ivPreview"/>
-        </androidx.constraintlayout.widget.ConstraintLayout>
-
-
         <!-- INPUT MESSAGE -->
         <EditText
             android:id="@+id/inputMessage"
             android:layout_width="0dp"
-            android:layout_height="50dp"
-            android:layout_marginEnd="55dp"
+            android:layout_height="40dp"
             android:background="@drawable/bg_chat_input"
-            android:hint="Write your message..."
+            android:hint="Write your message"
             android:imeOptions="actionDone"
             android:importantForAutofill="no"
             android:inputType="text"
-            android:paddingHorizontal="8dp"
+            android:paddingStart="15dp"
+            android:textSize="15dp"
             android:textColor="@color/black"
-            android:textColorHint="@color/black"
+            android:textColorHint="@color/sub_primary"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintEnd_toEndOf="@+id/layoutInput"
             app:layout_constraintStart_toEndOf="@id/imgAttach"
             app:layout_constraintTop_toTopOf="parent"/>
     </androidx.constraintlayout.widget.ConstraintLayout>
-
-    <!-- NEW BUTTON: MORE OPTIONS -->
-    <androidx.appcompat.widget.AppCompatImageView
-        android:id="@+id/imgMore"
-        android:layout_width="30dp"
-        android:layout_height="30dp"
-        android:layout_marginEnd="20dp"
-        android:layout_marginTop="20dp"
-        android:src="@drawable/ic_setting_chat"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
-
 </androidx.constraintlayout.widget.ConstraintLayout>

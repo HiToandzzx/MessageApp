@@ -2,6 +2,7 @@ package huytoandzzx.message_app.adapters
 
 import android.annotation.SuppressLint
 import android.app.AlertDialog
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.view.LayoutInflater
@@ -100,7 +101,7 @@ class ChatAdapter(
 
             // Long click vào tin nhắn để chọn reaction
             binding.tvMessage.setOnLongClickListener {
-                showReactionDialog(chatMessage)
+                showReactionDialog(binding.root.context, chatMessage)
                 true
             }
 
@@ -108,42 +109,6 @@ class ChatAdapter(
             binding.tvReaction.setOnClickListener {
                 reactionListener(chatMessage, "") // Gửi empty string để xoá reaction
             }
-        }
-
-        private fun showReactionDialog(chatMessage: ChatMessage) {
-            val context = binding.root.context
-            val dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_reactions, null)
-            val layoutReactions = dialogView.findViewById<LinearLayout>(R.id.layoutReactions)
-
-            // Tạo AlertDialog và thiết lập view cho nó
-            val builder = AlertDialog.Builder(context)
-                .setView(dialogView)
-            val alertDialog = builder.create()
-
-            // Mảng các reaction để hiển thị theo hàng ngang
-            val reactions = arrayOf("👍", "❤️", "😂", "😮", "😢", "\uD83D\uDE21")
-
-            // Tạo TextView cho từng reaction và thêm vào layout
-            for (reaction in reactions) {
-                val textView = TextView(context).apply {
-                    text = reaction
-                    textSize = 24f
-                    setPadding(16, 16, 16, 16)
-                    val params = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT
-                    )
-                    params.setMargins(16, 0, 16, 0)
-                    layoutParams = params
-
-                    setOnClickListener {
-                        reactionListener(chatMessage, reaction)
-                        alertDialog.dismiss()
-                    }
-                }
-                layoutReactions.addView(textView)
-            }
-            alertDialog.show()
         }
     }
 
@@ -179,7 +144,7 @@ class ChatAdapter(
 
             // Long click vào tin nhắn để chọn reaction
             binding.tvMessage.setOnLongClickListener {
-                showReactionDialog(chatMessage)
+                showReactionDialog(binding.root.context, chatMessage)
                 true
             }
 
@@ -188,39 +153,39 @@ class ChatAdapter(
                 reactionListener(chatMessage, "")
             }
         }
+    }
 
-        private fun showReactionDialog(chatMessage: ChatMessage) {
-            val context = binding.root.context
-            val dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_reactions, null)
-            val layoutReactions = dialogView.findViewById<LinearLayout>(R.id.layoutReactions)
+    private fun showReactionDialog(context: Context, chatMessage: ChatMessage) {
+        val dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_reactions, null)
+        val layoutReactions = dialogView.findViewById<LinearLayout>(R.id.layoutReactions)
 
-            val builder = AlertDialog.Builder(context)
-                .setView(dialogView)
-            val alertDialog = builder.create()
+        val builder = AlertDialog.Builder(context)
+            .setView(dialogView)
+        val alertDialog = builder.create()
 
-            val reactions = arrayOf("👍", "❤️", "😂", "😮", "😢", "\uD83D\uDE21")
+        val reactions = arrayOf("👍", "❤️", "😂", "😮", "😢", "\uD83D\uDE21")
 
-            for (reaction in reactions) {
-                val textView = TextView(context).apply {
-                    text = reaction
-                    textSize = 24f
-                    setPadding(16, 16, 16, 16)
-                    val params = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT
-                    )
-                    params.setMargins(16, 0, 16, 0)
-                    layoutParams = params
+        for (reaction in reactions) {
+            val textView = TextView(context).apply {
+                text = reaction
+                textSize = 24f
+                setPadding(16, 16, 16, 16)
+                val params = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+                params.setMargins(16, 0, 16, 0)
+                layoutParams = params
 
-                    setOnClickListener {
-                        reactionListener(chatMessage, reaction)
-                        alertDialog.dismiss()
-                    }
+                setOnClickListener {
+                    reactionListener(chatMessage, reaction)
+                    alertDialog.dismiss()
                 }
-                layoutReactions.addView(textView)
             }
-            alertDialog.show()
+            layoutReactions.addView(textView)
         }
+
+        alertDialog.show()
     }
 }
 
