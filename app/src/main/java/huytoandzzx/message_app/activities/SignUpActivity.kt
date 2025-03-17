@@ -1,5 +1,6 @@
 package huytoandzzx.message_app.activities
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -150,34 +151,72 @@ class SignUpActivity : AppCompatActivity() {
         }
     }
 
+    @SuppressLint("SetTextI18n")
     private fun isValidSignUpDetails(): Boolean {
+        var isValid = true
+
+        // Reset error messages
+        binding.tvErrorAddImageSignUp.visibility = View.GONE
+        binding.etUserNameSignUp.error = null
+        binding.etEmailSignUp.error = null
+        binding.etPasswordSignUp.error = null
+        binding.etConfirmPasswordSignUp.error = null
+
+        // Kiểm tra ảnh đại diện
         if (!::encodedImage.isInitialized || encodedImage.isEmpty()) {
-            showToast("Profile image is required")
-            return false
+            binding.tvErrorAddImageSignUp.text = "Profile image is required"
+            binding.tvErrorAddImageSignUp.visibility = View.VISIBLE
+            isValid = false
         }
-        if (binding.etUserNameSignUp.text.toString().trim().isEmpty()) {
-            showToast("Username is required")
-            return false
+
+        // Kiểm tra Username
+        val username = binding.etUserNameSignUp.text.toString().trim()
+        if (username.isEmpty()) {
+            binding.etUserNameSignUp.error = "Username is required"
+            isValid = false
         }
-        if (binding.etEmailSignUp.text.toString().trim().isEmpty()) {
-            showToast("Email is required")
-            return false
-        } else if (!android.util.Patterns.EMAIL_ADDRESS.matcher(binding.etEmailSignUp.text.toString()).matches()) {
-            showToast("Not a valid email")
-            return false
+
+        // Kiểm tra Email
+        val email = binding.etEmailSignUp.text.toString().trim()
+        if (email.isEmpty()) {
+            binding.etEmailSignUp.error = "Email is required"
+            isValid = false
+        } else if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            binding.etEmailSignUp.error = "Not a valid email"
+            isValid = false
         }
-        if (binding.etPasswordSignUp.text.toString().trim().isEmpty()) {
-            showToast("Password is required")
-            return false
+
+        // Kiểm tra Password
+        val password = binding.etPasswordSignUp.text.toString().trim()
+        if (password.isEmpty()) {
+            binding.etPasswordSignUp.error = "Password is required"
+            isValid = false
+        } else {
+            val errors = StringBuilder()
+            if (password.length < 8) errors.append("• At least 8 characters\n")
+            if (!password.any { it.isUpperCase() }) errors.append("• One uppercase letter\n")
+            if (!password.any { it.isLowerCase() }) errors.append("• One lowercase letter\n")
+            if (!password.any { it.isDigit() }) errors.append("• One number\n")
+            if (!password.any { "!@#\$%^&*()-_=+[]{};:'\",.<>?/\\|`~".contains(it) })
+                errors.append("• One special character\n")
+
+            if (errors.isNotEmpty()) {
+                binding.etPasswordSignUp.error = errors.toString().trim()
+                isValid = false
+            }
         }
-        if (binding.etConfirmPasswordSignUp.text.toString().trim().isEmpty()) {
-            showToast("Confirm your password")
-            return false
-        } else if (binding.etPasswordSignUp.text.toString() != binding.etConfirmPasswordSignUp.text.toString()) {
-            showToast("Passwords do not match")
-            return false
+
+        // Kiểm tra xác nhận Password
+        val confirmPassword = binding.etConfirmPasswordSignUp.text.toString().trim()
+        if (confirmPassword.isEmpty()) {
+            binding.etConfirmPasswordSignUp.error = "Confirm your password"
+            isValid = false
+        } else if (password != confirmPassword) {
+            binding.etConfirmPasswordSignUp.error = "Passwords do not match"
+            isValid = false
         }
-        return true
+
+        return isValid
     }
 
     // PROGRESS LOADING
