@@ -3,7 +3,6 @@ package huytoandzzx.message_app.activities
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Base64
@@ -19,7 +18,7 @@ import java.io.FileNotFoundException
 import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
 
-class ProfileActivity : AppCompatActivity() {
+class ProfileActivity : BaseActivity() {
     private lateinit var binding: ActivityProfileBinding
     private lateinit var preferenceManager: PreferenceManager
     // encodedImage sẽ lưu giá trị mới (nếu người dùng chọn ảnh) hoặc giữ giá trị cũ

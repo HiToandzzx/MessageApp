@@ -57,7 +57,7 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:33.0.0"))
     implementation("com.google.android.gms:play-services-auth:20.7.0")
     implementation("com.google.firebase:firebase-database-ktx")
-    implementation("com.google.firebase:firebase-messaging:24.1.0")
+    //implementation("com.google.firebase:firebase-messaging:24.1.0")
     implementation("com.google.firebase:firebase-firestore:25.1.2")
     implementation("com.google.firebase:firebase-auth-ktx")
 

@@ -105,9 +105,9 @@ class MainActivity : BaseActivity(), ConversionListener {
                 R.id.nav_profile -> {
                     startActivity(Intent(applicationContext, ProfileActivity::class.java))
                 }
-                R.id.nav_settings -> {
+                /*R.id.nav_settings -> {
                     //startActivity(Intent(applicationContext, SettingsActivity::class.java))
-                }
+                }*/
                 R.id.nav_logout -> {
                     signOut()
                 }

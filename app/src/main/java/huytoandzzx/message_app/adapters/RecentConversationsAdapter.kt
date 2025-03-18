@@ -58,11 +58,20 @@ class RecentConversationsAdapter(
             binding.textAvailability.visibility = View.GONE
             val userRef = FirebaseFirestore.getInstance().collection(Constants.KEY_COLLECTION_USERS)
                 .document(chatMessage.conversationId)
-            userRef.addSnapshotListener { document, _ ->
+            userRef.addSnapshotListener { document, error ->
+                if (error != null) {
+                    Log.e("RecentConversationsAdapter", "Error getting availability status", error)
+                    binding.textAvailability.visibility = View.GONE
+                    return@addSnapshotListener
+                }
+
                 if (document != null && document.exists()) {
                     val availability = document.getLong(Constants.KEY_AVAILABILITY)
                     binding.textAvailability.visibility =
                         if (availability?.toInt() == 1) View.VISIBLE else View.GONE
+                } else {
+                    Log.e("RecentConversationsAdapter", "Document not found or null")
+                    binding.textAvailability.visibility = View.GONE
                 }
             }
 

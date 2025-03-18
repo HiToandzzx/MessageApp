@@ -18,6 +18,7 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.google.android.gms.tasks.OnCompleteListener
 import com.google.firebase.firestore.DocumentChange
@@ -36,7 +37,7 @@ import java.io.ByteArrayOutputStream
 import java.util.Date
 
 @Suppress("DEPRECATION")
-class ChatActivity : BaseActivity() {
+class ChatActivity : AppCompatActivity() {
     private lateinit var binding: ActivityChatBinding
     private lateinit var receiverUser: User
     private var chatMessages: MutableList<ChatMessage> = mutableListOf()
@@ -73,7 +74,7 @@ class ChatActivity : BaseActivity() {
             receiverUser.image?.let { getBitmapFromEncodedString(it) },
             preferenceManager.getString(Constants.KEY_USER_ID) ?: "",
             reactionListener = { chatMessage, reaction ->
-                // Ví dụ: cập nhật trường reaction của tin nhắn lên Firestore
+                // cập nhật trường reaction của tin nhắn lên Firestore
                 database.collection(Constants.KEY_COLLECTION_CHAT)
                     .whereEqualTo(Constants.KEY_SENDER_ID, chatMessage.senderId)
                     .whereEqualTo(Constants.KEY_TIMESTAMP, chatMessage.dateObject)
@@ -107,6 +108,18 @@ class ChatActivity : BaseActivity() {
             val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
             startActivityForResult(intent, IMAGE_PICK_REQUEST_CODE)
         }
+    }
+
+    private fun listenMessages() {
+        database.collection(Constants.KEY_COLLECTION_CHAT)
+            .whereEqualTo(Constants.KEY_SENDER_ID, preferenceManager.getString(Constants.KEY_USER_ID))
+            .whereEqualTo(Constants.KEY_RECEIVER_ID, receiverUser.id)
+            .addSnapshotListener(eventListener)
+
+        database.collection(Constants.KEY_COLLECTION_CHAT)
+            .whereEqualTo(Constants.KEY_SENDER_ID, receiverUser.id)
+            .whereEqualTo(Constants.KEY_RECEIVER_ID, preferenceManager.getString(Constants.KEY_USER_ID))
+            .addSnapshotListener(eventListener)
     }
 
     @SuppressLint("NotifyDataSetChanged")
@@ -206,8 +219,8 @@ class ChatActivity : BaseActivity() {
             Constants.KEY_REACTION to "",
             Constants.KEY_IS_READ to false
         )
-
         database.collection(Constants.KEY_COLLECTION_CHAT).add(message)
+
         if (conversionId != null) {
             updateConversion(messageText)
         } else {
@@ -665,18 +678,6 @@ class ChatActivity : BaseActivity() {
                     binding.tvStatus.visibility = View.GONE
                 }
             }
-    }
-
-    private fun listenMessages() {
-        database.collection(Constants.KEY_COLLECTION_CHAT)
-            .whereEqualTo(Constants.KEY_SENDER_ID, preferenceManager.getString(Constants.KEY_USER_ID))
-            .whereEqualTo(Constants.KEY_RECEIVER_ID, receiverUser.id)
-            .addSnapshotListener(eventListener)
-
-        database.collection(Constants.KEY_COLLECTION_CHAT)
-            .whereEqualTo(Constants.KEY_SENDER_ID, receiverUser.id)
-            .whereEqualTo(Constants.KEY_RECEIVER_ID, preferenceManager.getString(Constants.KEY_USER_ID))
-            .addSnapshotListener(eventListener)
     }
 
     private fun loadReceiverDetails() {

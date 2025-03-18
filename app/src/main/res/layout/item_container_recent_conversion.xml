@@ -21,6 +21,7 @@
         android:id="@+id/textAvailability"
         android:layout_width="15dp"
         android:layout_height="15dp"
+        android:visibility="gone"
         android:src="@drawable/ic_active_now"
         app:layout_constraintBottom_toBottomOf="@id/imageProfile"
         app:layout_constraintEnd_toEndOf="@id/imageProfile"/>

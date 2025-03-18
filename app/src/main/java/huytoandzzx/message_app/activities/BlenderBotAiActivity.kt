@@ -1,7 +1,6 @@
 package huytoandzzx.message_app.activities
 
 import android.annotation.SuppressLint
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.widget.EditText
 import android.widget.ImageView
@@ -29,7 +28,7 @@ import java.util.Locale
 import huytoandzzx.message_app.utilities.Constants
 import huytoandzzx.message_app.utilities.PreferenceManager
 
-class BlenderBotAiActivity : AppCompatActivity() {
+class BlenderBotAiActivity : BaseActivity() {
 
     private lateinit var rvChat: RecyclerView
     private lateinit var etMessage: EditText
