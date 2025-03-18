@@ -61,6 +61,7 @@ class ChatActivity : BaseActivity() {
         loadReceiverDetails()
         init()
         listenMessages()
+        listenThemeChange()
 
         receiverUser.id?.let { preferenceManager.putString(Constants.KEY_OPEN_CONVERSATION_ID, it) }
     }
@@ -501,6 +502,24 @@ class ChatActivity : BaseActivity() {
         dialog.show()
     }
 
+    private fun listenThemeChange() {
+        receiverUser.id?.let { userId ->
+            database.collection(Constants.KEY_COLLECTION_CONVERSATIONS)
+                .whereEqualTo(Constants.KEY_SENDER_ID, preferenceManager.getString(Constants.KEY_USER_ID))
+                .whereEqualTo(Constants.KEY_RECEIVER_ID, userId)
+                .addSnapshotListener { value, error ->
+                    if (error != null) {
+                        Log.e("ChatActivity", "Failed to listen for theme changes", error)
+                        return@addSnapshotListener
+                    }
+                    value?.documents?.forEach { document ->
+                        val themeColor = document.getLong(Constants.KEY_THEME_COLOR)
+                        themeColor?.let { applyThemeColor(it.toInt()) }
+                    }
+                }
+        }
+    }
+
     // APPLY THEME
     private fun applyThemeColor(color: Int) {
         currentThemeColor = color
@@ -513,34 +532,31 @@ class ChatActivity : BaseActivity() {
     }
 
     // LƯU THEME
-    private fun saveThemeColorToFirebase(color: Int) {
-        // Kiểm tra conversionId có tồn tại hay không
-        conversionId?.let { convId ->
-            // Tạo map cập nhật, thêm trường KEY_THEME_COLOR (đã khai báo trong Constants) và cập nhật timestamp
-            val updateMap = hashMapOf<String, Any>(
-                Constants.KEY_THEME_COLOR to color,
-                Constants.KEY_TIMESTAMP to Date()
-            )
-            database.collection(Constants.KEY_COLLECTION_CONVERSATIONS)
-                .document(convId)
-                .update(updateMap)
-                .addOnSuccessListener {
-                    // Bạn có thể hiển thị thông báo thành công nếu cần
-                }
-                .addOnFailureListener { _ ->
-                    // Xử lý lỗi nếu việc cập nhật thất bại
-                }
-        }
+    private fun saveThemeColorToFirebase(newColor: Int) {
+        val conversationId = conversionId ?: return
+        val update = hashMapOf(Constants.KEY_THEME_COLOR to newColor)
+        database.collection(Constants.KEY_COLLECTION_CONVERSATIONS)
+            .document(conversationId)
+            .update(update as Map<String, Any>)
+            .addOnSuccessListener {
+                Log.d("ChatActivity", "Theme color updated successfully")
+            }
+            .addOnFailureListener { e ->
+                Log.e("ChatActivity", "Failed to update theme color", e)
+            }
     }
 
     private fun loadThemeColor() {
         conversionId?.let { convId ->
             database.collection(Constants.KEY_COLLECTION_CONVERSATIONS)
                 .document(convId)
-                .get()
-                .addOnSuccessListener { document ->
-                    if (document.exists()) {
-                        val themeColor = document.getLong(Constants.KEY_THEME_COLOR)
+                .addSnapshotListener { documentSnapshot, error ->
+                    if (error != null) {
+                        Log.e("ChatActivity", "Error loading theme color", error)
+                        return@addSnapshotListener
+                    }
+                    if (documentSnapshot != null && documentSnapshot.exists()) {
+                        val themeColor = documentSnapshot.getLong(Constants.KEY_THEME_COLOR)
                         themeColor?.let {
                             applyThemeColor(it.toInt())
                         }
