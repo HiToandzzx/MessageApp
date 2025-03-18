@@ -31,7 +31,7 @@ class SignInActivity : AppCompatActivity() {
     private lateinit var googleSignInClient: GoogleSignInClient
 
     companion object {
-        private const val RC_SIGN_IN = 9002
+        const val RC_SIGN_IN = 9002
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
