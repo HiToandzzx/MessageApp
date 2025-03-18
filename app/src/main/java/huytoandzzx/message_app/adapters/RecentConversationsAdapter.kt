@@ -99,21 +99,35 @@ class RecentConversationsAdapter(
                 .whereEqualTo(Constants.KEY_SENDER_ID, chatMessage.conversationId)
                 .whereEqualTo(Constants.KEY_RECEIVER_ID, currentUserId)
                 .whereEqualTo(Constants.KEY_IS_READ, false)
-                .get()
-                .addOnSuccessListener { querySnapshot ->
-                    // Nếu có tin nhắn chưa đọc, hiển thị chấm đỏ và chỉnh style text
-                    if (!querySnapshot.isEmpty) {
-                        binding.unRead.visibility = View.VISIBLE
-                        binding.tvRecentMessage.setTypeface(null, android.graphics.Typeface.BOLD)
-                        binding.tvRecentMessage.setTextColor(android.graphics.Color.BLACK)
+                .addSnapshotListener { querySnapshot, error ->
+                    if (error != null) {
+                        Log.e("RecentConversationsAdapter", "Error checking unread messages", error)
+                        return@addSnapshotListener
+                    }
+
+                    // Lấy trạng thái cuộc trò chuyện đang mở
+                    val openConversationId = PreferenceManager(binding.root.context)
+                        .getString(Constants.KEY_OPEN_CONVERSATION_ID)
+
+                    if (querySnapshot != null && !querySnapshot.isEmpty) {
+                        // Nếu cuộc trò chuyện đang mở -> tự động đánh dấu đã đọc
+                        if (openConversationId == chatMessage.conversationId) {
+                            markMessagesAsRead(chatMessage.conversationId, currentUserId)
+                            binding.unRead.visibility = View.GONE
+                            binding.tvRecentMessage.setTypeface(null, android.graphics.Typeface.NORMAL)
+                            binding.tvRecentMessage.setTextColor(android.graphics.Color.GRAY)
+                        } else {
+                            // Hiển thị chấm đỏ và làm đậm tin nhắn nếu chưa đọc
+                            binding.unRead.visibility = View.VISIBLE
+                            binding.tvRecentMessage.setTypeface(null, android.graphics.Typeface.BOLD)
+                            binding.tvRecentMessage.setTextColor(android.graphics.Color.BLACK)
+                        }
                     } else {
+                        // Không có tin nhắn chưa đọc
                         binding.unRead.visibility = View.GONE
                         binding.tvRecentMessage.setTypeface(null, android.graphics.Typeface.NORMAL)
                         binding.tvRecentMessage.setTextColor(android.graphics.Color.GRAY)
                     }
-                }
-                .addOnFailureListener { e ->
-                    Log.e("RecentConversationsAdapter", "Error checking unread messages", e)
                 }
         }
 

@@ -63,11 +63,12 @@
 
     <ImageView
         android:id="@+id/unRead"
-        android:layout_width="15dp"
-        android:layout_height="15dp"
+        android:layout_width="10dp"
+        android:layout_height="10dp"
         android:background="@drawable/bg_unread_count"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="@+id/tvRecentMessage"
+        app:layout_constraintTop_toTopOf="@+id/tvRecentMessage"
         app:layout_constraintEnd_toEndOf="@+id/tvRecentMessage"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -61,6 +61,8 @@ class ChatActivity : BaseActivity() {
         loadReceiverDetails()
         init()
         listenMessages()
+
+        receiverUser.id?.let { preferenceManager.putString(Constants.KEY_OPEN_CONVERSATION_ID, it) }
     }
 
     private fun init() {
@@ -793,5 +795,11 @@ class ChatActivity : BaseActivity() {
         listenAvailabilityOfReceiver()
         loadThemeColor()
         markMessageAsRead()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // Xóa trạng thái cuộc trò chuyện đang mở khi thoát activity
+        preferenceManager.putString(Constants.KEY_OPEN_CONVERSATION_ID, "")
     }
 }
